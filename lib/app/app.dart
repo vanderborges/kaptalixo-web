@@ -1,26 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'roteador.dart';
 import 'tema.dart';
 
 /// Widget raiz do Kaptalixo.
-class KaptalixoApp extends StatefulWidget {
+class KaptalixoApp extends ConsumerWidget {
   const KaptalixoApp({super.key});
 
   @override
-  State<KaptalixoApp> createState() => _KaptalixoAppState();
-}
-
-class _KaptalixoAppState extends State<KaptalixoApp> {
-  late final GoRouter _roteador = criarRoteador();
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       title: 'Kaptalixo',
       theme: criarTema(),
-      routerConfig: _roteador,
+      darkTheme: criarTemaEscuro(),
+      routerConfig: ref.watch(roteadorProvider),
     );
   }
 }
