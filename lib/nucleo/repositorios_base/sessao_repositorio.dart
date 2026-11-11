@@ -41,4 +41,10 @@ class SessaoRepositorioFake implements SessaoRepositorio {
     _atual = null;
     _controle.add(null);
   }
+
+  /// Verdadeiro enquanto alguém escuta [mudancas] (útil em testes).
+  bool get temOuvintes => _controle.hasListener;
+
+  /// Libera o controlador de eventos.
+  Future<void> fechar() => _controle.close();
 }

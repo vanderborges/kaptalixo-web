@@ -4,6 +4,7 @@ import 'papel.dart';
 class Sessao {
   const Sessao({required this.usuarioId, required this.papel});
 
+  /// JSON interno do app (não é o formato da tabela `perfis`; lá o id é `id`).
   factory Sessao.fromJson(Map<String, dynamic> json) => Sessao(
     usuarioId: json['usuario_id'] as String,
     papel: Papel.deTexto(json['papel'] as String),

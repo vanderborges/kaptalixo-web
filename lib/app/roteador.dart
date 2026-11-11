@@ -21,8 +21,9 @@ String? redirecionar(SessaoRepositorio sessoes, String local) {
   return ehRotaDoPapel ? null : home;
 }
 
-class _AtualizadorSessao extends ChangeNotifier {
-  _AtualizadorSessao(Stream<Object?> fonte) {
+/// Notifica o roteador quando a sessão muda. Deve ser descartado por quem o cria.
+class AtualizadorSessao extends ChangeNotifier {
+  AtualizadorSessao(Stream<Object?> fonte) {
     _sub = fonte.listen((_) => notifyListeners());
   }
 
@@ -36,8 +37,10 @@ class _AtualizadorSessao extends ChangeNotifier {
 }
 
 /// Cria o roteador do app com guarda por papel.
-GoRouter criarRoteador(SessaoRepositorio sessoes) {
-  final atualizador = _AtualizadorSessao(sessoes.mudancas);
+GoRouter criarRoteador(
+  SessaoRepositorio sessoes,
+  AtualizadorSessao atualizador,
+) {
   return GoRouter(
     initialLocation: '/entrar',
     refreshListenable: atualizador,
@@ -54,7 +57,13 @@ GoRouter criarRoteador(SessaoRepositorio sessoes) {
 }
 
 final roteadorProvider = Provider<GoRouter>((ref) {
-  final roteador = criarRoteador(ref.watch(sessaoRepositorioProvider));
-  ref.onDispose(roteador.dispose);
+  final sessoes = ref.watch(sessaoRepositorioProvider);
+  final atualizador = AtualizadorSessao(sessoes.mudancas);
+  final roteador = criarRoteador(sessoes, atualizador);
+  // Ordem importa: o roteador remove seu listener antes do atualizador morrer.
+  ref.onDispose(() {
+    roteador.dispose();
+    atualizador.dispose();
+  });
   return roteador;
 });

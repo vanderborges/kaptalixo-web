@@ -74,8 +74,49 @@ void main() {
     expect(localAtual(tester), '/entrar');
   });
 
-  test('redirecionar: deslogado em /gerador vai para /entrar', () {
-    expect(redirecionar(SessaoRepositorioFake(), '/gerador'), '/entrar');
+  group('redirecionar', () {
+    for (final papel in Papel.values) {
+      final repo = SessaoRepositorioFake(papel: papel);
+      for (final outro in Papel.values.where((p) => p != papel)) {
+        test('${papel.name} em ${outro.rotaInicial} volta à própria home', () {
+          expect(redirecionar(repo, outro.rotaInicial), papel.rotaInicial);
+        });
+      }
+      test('${papel.name} acessa a própria home e subrota', () {
+        expect(redirecionar(repo, papel.rotaInicial), isNull);
+        expect(redirecionar(repo, '${papel.rotaInicial}/pedido'), isNull);
+      });
+      test('${papel.name} não passa por falso prefixo', () {
+        expect(redirecionar(repo, '${papel.rotaInicial}x'), papel.rotaInicial);
+      });
+      test('${papel.name} em rota desconhecida ou /entrar vai à home', () {
+        for (final rota in ['/', '/xyz', '/entrar']) {
+          expect(redirecionar(repo, rota), papel.rotaInicial);
+        }
+      });
+    }
+
+    test('deslogado vai para /entrar, exceto nela', () {
+      final repo = SessaoRepositorioFake();
+      for (final rota in ['/gerador', '/admin', '/', '/xyz']) {
+        expect(redirecionar(repo, rota), '/entrar');
+      }
+      expect(redirecionar(repo, '/entrar'), isNull);
+    });
+  });
+
+  testWidgets('descartar o container solta a assinatura da sessão', (
+    tester,
+  ) async {
+    final repo = SessaoRepositorioFake();
+    final container = ProviderContainer(
+      overrides: [sessaoRepositorioProvider.overrideWithValue(repo)],
+    );
+    container.read(roteadorProvider);
+    expect(repo.temOuvintes, isTrue);
+    container.dispose();
+    expect(repo.temOuvintes, isFalse);
+    await repo.fechar();
   });
 
   testWidgets('usa tema escuro quando o sistema é escuro', (tester) async {

@@ -40,6 +40,7 @@ class TelaEntrar extends ConsumerWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
+              // TODO(T2.1): trocar pelo login real e remover a dependência do fake.
               if (repo is SessaoRepositorioFake)
                 for (final papel in Papel.values) ...[
                   BotaoPrimario(
