@@ -61,11 +61,11 @@ void main() {
     });
   }
 
-  testWidgets('login e logout redirecionam', (tester) async {
+  testWidgets('mudança de sessão e logout redirecionam', (tester) async {
     final repo = SessaoRepositorioFake();
     await abrir(tester, repo);
 
-    await tester.tap(find.text('Entrar como Catador'));
+    repo.entrarComo(Papel.catador);
     await tester.pumpAndSettle();
     expect(localAtual(tester), '/catador');
 
