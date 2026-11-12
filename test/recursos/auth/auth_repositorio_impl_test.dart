@@ -341,4 +341,32 @@ void main() {
       await r.fechar();
     });
   });
+
+  group('recarregar (P-013 item 5)', () {
+    test('pendente aprovado pelo admin passa a aprovado e emite', () async {
+      await repo.entrar(email: 'pen@x.dev', senha: 'Kaptalixo#Dev1');
+      expect(repo.atual!.statusCadastro, StatusCadastro.pendente);
+      expect(repo.atual!.podeFicarDisponivel, isFalse);
+      final emitidas = <Object?>[];
+      final sub = repo.mudancas.listen(emitidas.add);
+      remoto.catadores['c2'] = {'status_cadastro': 'aprovado'};
+      final s = await repo.recarregar();
+      await Future<void>.delayed(Duration.zero);
+      expect(s!.statusCadastro, StatusCadastro.aprovado);
+      expect(s.podeFicarDisponivel, isTrue);
+      expect(emitidas, hasLength(1));
+      await sub.cancel();
+    });
+
+    test('sem mudança não emite; deslogado devolve nulo', () async {
+      expect(await repo.recarregar(), isNull);
+      await repo.entrar(email: 'pen@x.dev', senha: 'Kaptalixo#Dev1');
+      final emitidas = <Object?>[];
+      final sub = repo.mudancas.listen(emitidas.add);
+      await repo.recarregar();
+      await Future<void>.delayed(Duration.zero);
+      expect(emitidas, isEmpty);
+      await sub.cancel();
+    });
+  });
 }

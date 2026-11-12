@@ -40,7 +40,11 @@ void main() {
     testWidgets('papel ${papel.name} vai para a própria home', (tester) async {
       await abrir(tester, SessaoRepositorioFake(papel: papel));
       expect(localAtual(tester), papel.rotaInicial);
-      expect(find.text('Área: ${papel.rotulo} (em construção)'), findsOne);
+      if (papel == Papel.admin) {
+        expect(find.text('Administrador'), findsOneWidget);
+      } else {
+        expect(find.text('Área: ${papel.rotulo} (em construção)'), findsOne);
+      }
     });
 
     testWidgets('papel ${papel.name} não acessa rota de outro papel', (

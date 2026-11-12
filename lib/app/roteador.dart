@@ -9,6 +9,9 @@ import '../nucleo/repositorios_base/sessao_repositorio.dart';
 import '../recursos/auth/apresentacao/providers.dart';
 import '../recursos/auth/apresentacao/tela_cadastro.dart';
 import '../recursos/auth/apresentacao/tela_entrar.dart';
+import '../recursos/admin/apresentacao/tela_admin.dart';
+import '../recursos/admin/apresentacao/tela_catador_admin.dart';
+import '../recursos/auth/apresentacao/tela_aguardando_aprovacao.dart';
 import 'placeholders.dart';
 
 /// Rotas acessíveis sem login.
@@ -23,7 +26,7 @@ String? redirecionar(SessaoRepositorio sessoes, String local) {
   if (sessao == null) {
     return rotasPublicas.contains(local) ? null : '/entrar';
   }
-  // Catador ainda não aprovado só vê a tela de espera (a real é da T2.2).
+  // Catador ainda não aprovado só vê a tela de espera .
   if (sessao.catadorNaoAprovado) {
     return local == rotaAguardandoAprovacao ? null : rotaAguardandoAprovacao;
   }
@@ -66,8 +69,16 @@ GoRouter criarRoteador(
       for (final p in Papel.values)
         GoRoute(
           path: p.rotaInicial,
-          builder: (context, state) => TelaPlaceholderPapel(papel: p),
+          builder: (context, state) => p == Papel.admin
+              ? const TelaAdmin()
+              : TelaPlaceholderPapel(papel: p),
           routes: [
+            if (p == Papel.admin)
+              GoRoute(
+                path: 'catador/:id',
+                builder: (context, state) =>
+                    TelaCatadorAdmin(catadorId: state.pathParameters['id']!),
+              ),
             if (p == Papel.catador)
               GoRoute(
                 path: 'aguardando',

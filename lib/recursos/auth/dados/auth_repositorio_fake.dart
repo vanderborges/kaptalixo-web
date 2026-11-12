@@ -102,6 +102,39 @@ class AuthRepositorioFake implements AuthRepositorio {
     return sessao;
   }
 
+  /// Simula a decisão do admin sobre um catador (aplicada em [recarregar]).
+  void definirStatusCatador(String usuarioId, StatusCadastro status) {
+    for (final conta in _contas.values) {
+      final s = conta.sessao;
+      if (s.usuarioId == usuarioId) {
+        conta.sessao = Sessao(
+          usuarioId: s.usuarioId,
+          papel: s.papel,
+          statusCadastro: status,
+        );
+      }
+    }
+  }
+
+  /// Falha lançada na próxima chamada de [recarregar] (uma vez).
+  FalhaAuth? falhaRecarregar;
+
+  @override
+  Future<Sessao?> recarregar() async {
+    final falha = falhaRecarregar;
+    if (falha != null) {
+      falhaRecarregar = null;
+      throw falha;
+    }
+    final atual = _atual;
+    if (atual == null) return null;
+    final nova = _contas.values
+        .map((c) => c.sessao)
+        .firstWhere((s) => s.usuarioId == atual.usuarioId, orElse: () => atual);
+    if (nova != atual) _definir(nova);
+    return nova;
+  }
+
   @override
   Future<void> sair() async {
     _definir(null);
@@ -116,5 +149,5 @@ class AuthRepositorioFake implements AuthRepositorio {
 class _Conta {
   _Conta(this.senha, this.sessao);
   final String senha;
-  final Sessao sessao;
+  Sessao sessao;
 }

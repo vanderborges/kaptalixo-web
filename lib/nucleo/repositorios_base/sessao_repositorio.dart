@@ -12,6 +12,10 @@ abstract class SessaoRepositorio {
   Stream<Sessao?> get mudancas;
 
   Future<void> sair();
+
+  /// Relê papel/status do servidor (ex.: catador aprovado pelo admin) e emite
+  /// em [mudancas] se algo mudou. Devolve a sessão atualizada (nula = deslogado).
+  Future<Sessao?> recarregar();
 }
 
 /// Implementação falsa para testes e desenvolvimento.
@@ -34,6 +38,21 @@ class SessaoRepositorioFake implements SessaoRepositorio {
   void entrarComo(Papel papel) {
     _atual = Sessao(usuarioId: 'fake-id', papel: papel);
     _controle.add(_atual);
+  }
+
+  /// Sessão que [recarregar] passará a devolver/emitir (simula o servidor).
+  void definirSessao(Sessao sessao) => _proxima = sessao;
+
+  Sessao? _proxima;
+
+  @override
+  Future<Sessao?> recarregar() async {
+    final nova = _proxima;
+    if (nova != null && nova != _atual) {
+      _atual = nova;
+      _controle.add(nova);
+    }
+    return _atual;
   }
 
   @override

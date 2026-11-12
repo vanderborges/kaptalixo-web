@@ -105,6 +105,15 @@ class AuthRepositorioImpl implements AuthRepositorio {
   }
 
   @override
+  Future<Sessao?> recarregar() async {
+    final atual = _atual;
+    if (atual == null) return null;
+    final sessao = await _carregarSessao(atual.usuarioId);
+    _definir(sessao);
+    return sessao;
+  }
+
+  @override
   Future<void> sair() async {
     await _remoto.sair();
     _definir(null);

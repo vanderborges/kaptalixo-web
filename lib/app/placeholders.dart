@@ -27,34 +27,3 @@ class TelaPlaceholderPapel extends ConsumerWidget {
     );
   }
 }
-
-/// Provisória (a T2.2 entrega a tela definitiva): catador sem aprovação.
-class TelaAguardandoAprovacao extends ConsumerWidget {
-  const TelaAguardandoAprovacao({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Catador'),
-        actions: [
-          IconButton(
-            tooltip: 'Sair',
-            icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(sessaoRepositorioProvider).sair(),
-          ),
-        ],
-      ),
-      body: const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Cadastro aguardando aprovação.\n'
-            'Você poderá ficar disponível depois que a equipe aprovar.',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      ),
-    );
-  }
-}

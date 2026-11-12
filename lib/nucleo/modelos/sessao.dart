@@ -30,6 +30,10 @@ class Sessao {
       statusCadastro != null &&
       statusCadastro != StatusCadastro.aprovado;
 
+  /// RN10: só catador `aprovado` pode ficar disponível / receber ofertas.
+  bool get podeFicarDisponivel =>
+      papel == Papel.catador && statusCadastro == StatusCadastro.aprovado;
+
   Map<String, dynamic> toJson() => {
     'usuario_id': usuarioId,
     'papel': papel.paraTexto(),
