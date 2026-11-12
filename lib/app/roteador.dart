@@ -7,15 +7,27 @@ import 'package:go_router/go_router.dart';
 import '../nucleo/modelos/papel.dart';
 import '../nucleo/repositorios_base/sessao_repositorio.dart';
 import '../recursos/auth/apresentacao/providers.dart';
+import '../recursos/auth/apresentacao/tela_cadastro.dart';
 import '../recursos/auth/apresentacao/tela_entrar.dart';
 import 'placeholders.dart';
+
+/// Rotas acessíveis sem login.
+const rotasPublicas = {'/entrar', '/cadastrar'};
+
+/// Destino do catador com cadastro pendente/suspenso.
+const rotaAguardandoAprovacao = '/catador/aguardando';
 
 /// Decide o redirecionamento conforme a sessão. Retorna nulo para permitir.
 String? redirecionar(SessaoRepositorio sessoes, String local) {
   final sessao = sessoes.atual;
   if (sessao == null) {
-    return local == '/entrar' ? null : '/entrar';
+    return rotasPublicas.contains(local) ? null : '/entrar';
   }
+  // Catador ainda não aprovado só vê a tela de espera (a real é da T2.2).
+  if (sessao.catadorNaoAprovado) {
+    return local == rotaAguardandoAprovacao ? null : rotaAguardandoAprovacao;
+  }
+  if (local == rotaAguardandoAprovacao) return sessao.papel.rotaInicial;
   final home = sessao.papel.rotaInicial;
   final ehRotaDoPapel = local == home || local.startsWith('$home/');
   return ehRotaDoPapel ? null : home;
@@ -47,10 +59,21 @@ GoRouter criarRoteador(
     redirect: (context, state) => redirecionar(sessoes, state.uri.path),
     routes: [
       GoRoute(path: '/entrar', builder: (context, state) => const TelaEntrar()),
+      GoRoute(
+        path: '/cadastrar',
+        builder: (context, state) => const TelaCadastro(),
+      ),
       for (final p in Papel.values)
         GoRoute(
           path: p.rotaInicial,
           builder: (context, state) => TelaPlaceholderPapel(papel: p),
+          routes: [
+            if (p == Papel.catador)
+              GoRoute(
+                path: 'aguardando',
+                builder: (context, state) => const TelaAguardandoAprovacao(),
+              ),
+          ],
         ),
     ],
   );
