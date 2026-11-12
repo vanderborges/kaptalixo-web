@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../nucleo/modelos/papel.dart';
+import '../../../nucleo/modelos/sessao.dart';
 import '../../../nucleo/repositorios_base/sessao_repositorio.dart';
 import '../dados/auth_repositorio_fake.dart';
 import '../dominio/auth_repositorio.dart';
@@ -14,6 +15,19 @@ final authRepositorioProvider = Provider<AuthRepositorio>(
 /// Sessão do usuário (mesmo objeto do repositório de autenticação).
 final sessaoRepositorioProvider = Provider<SessaoRepositorio>(
   (ref) => ref.watch(authRepositorioProvider),
+);
+
+/// Sessão atual como estado reativo (valor inicial + mudanças).
+final sessaoProvider = StreamProvider<Sessao?>((ref) async* {
+  final repo = ref.watch(sessaoRepositorioProvider);
+  yield repo.atual;
+  yield* repo.mudancas;
+});
+
+/// RN10: verdadeiro só para catador aprovado. A tela de disponibilidade (T5.1)
+/// deve condicionar o botão "Ficar disponível" a este provider.
+final podeFicarDisponivelProvider = Provider<bool>(
+  (ref) => ref.watch(sessaoProvider).value?.podeFicarDisponivel ?? false,
 );
 
 /// Papéis que podem se cadastrar pelo app.
