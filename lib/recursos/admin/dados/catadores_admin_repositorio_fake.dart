@@ -72,7 +72,8 @@ class CatadoresAdminRepositorioFake implements CatadoresAdminRepositorio {
   @override
   Future<List<CatadorCadastro>> listar(StatusCadastro status) async {
     await _preparar();
-    return _itens.values.where((c) => c.statusCadastro == status).toList();
+    return _itens.values.where((c) => c.statusCadastro == status).toList()
+      ..sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));
   }
 
   @override

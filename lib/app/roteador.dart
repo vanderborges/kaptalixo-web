@@ -26,7 +26,7 @@ String? redirecionar(SessaoRepositorio sessoes, String local) {
   if (sessao == null) {
     return rotasPublicas.contains(local) ? null : '/entrar';
   }
-  // Catador ainda não aprovado só vê a tela de espera .
+  // Catador ainda não aprovado só vê a tela de espera.
   if (sessao.catadorNaoAprovado) {
     return local == rotaAguardandoAprovacao ? null : rotaAguardandoAprovacao;
   }

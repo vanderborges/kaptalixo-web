@@ -5,6 +5,13 @@ enum CodigoFalhaAdmin { naoEncontrado, semPermissao, rede, desconhecida }
 class FalhaAdmin implements Exception {
   const FalhaAdmin(this.codigo);
 
+  /// Traduz o código SQLSTATE de um erro do Postgres: 42501 (privilégio/RLS) e
+  /// P0001 (trigger 'status_cadastro: somente admin') viram semPermissao.
+  factory FalhaAdmin.dePostgres(String? sqlState) =>
+      sqlState == '42501' || sqlState == 'P0001'
+      ? const FalhaAdmin(CodigoFalhaAdmin.semPermissao)
+      : const FalhaAdmin(CodigoFalhaAdmin.desconhecida);
+
   final CodigoFalhaAdmin codigo;
 
   String get mensagem => switch (codigo) {

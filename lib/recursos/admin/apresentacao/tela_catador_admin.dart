@@ -32,7 +32,7 @@ class _TelaCatadorAdminState extends ConsumerState<TelaCatadorAdmin> {
   }
 
   Future<void> _alterar(CatadorCadastro c, StatusCadastro novo) async {
-    if (novo == StatusCadastro.suspenso && !await _confirmarSuspensao(c)) {
+    if (!await _confirmar(c, novo)) {
       return;
     }
     setState(() {
@@ -63,11 +63,14 @@ class _TelaCatadorAdminState extends ConsumerState<TelaCatadorAdmin> {
     }
   }
 
-  Future<bool> _confirmarSuspensao(CatadorCadastro c) async {
+  Future<bool> _confirmar(CatadorCadastro c, StatusCadastro novo) async {
+    final suspender = novo == StatusCadastro.suspenso;
+    final reativar = c.statusCadastro == StatusCadastro.suspenso;
+    if (!suspender && !reativar) return true;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Suspender catador?'),
+        title: Text(suspender ? 'Suspender catador?' : 'Reativar catador?'),
         content: Text('${c.nome} não poderá receber coletas.'),
         actions: [
           TextButton(
@@ -76,7 +79,7 @@ class _TelaCatadorAdminState extends ConsumerState<TelaCatadorAdmin> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Suspender'),
+            child: Text(suspender ? 'Suspender' : 'Reativar'),
           ),
         ],
       ),

@@ -153,6 +153,9 @@ void main() {
       expect(find.text('Suspender'), findsNothing);
       await tester.tap(find.text('Reativar (aprovar)'));
       await tester.pumpAndSettle();
+      expect(find.text('Reativar catador?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Reativar'));
+      await tester.pumpAndSettle();
       expect(admin.alteracoes, [('c-suspenso-1', StatusCadastro.aprovado)]);
     });
   });

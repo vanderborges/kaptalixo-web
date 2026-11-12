@@ -146,4 +146,36 @@ void main() {
       expect(s(Papel.gerador).podeFicarDisponivel, false);
     });
   });
+
+  group('FalhaAdmin.dePostgres', () {
+    test('42501 e P0001 viram semPermissao', () {
+      expect(
+        FalhaAdmin.dePostgres('42501').codigo,
+        CodigoFalhaAdmin.semPermissao,
+      );
+      expect(
+        FalhaAdmin.dePostgres('P0001').codigo,
+        CodigoFalhaAdmin.semPermissao,
+      );
+      expect(
+        FalhaAdmin.dePostgres('XX000').codigo,
+        CodigoFalhaAdmin.desconhecida,
+      );
+      expect(FalhaAdmin.dePostgres(null).codigo, CodigoFalhaAdmin.desconhecida);
+    });
+  });
+
+  test('lista ordenada por nome (sem diferenciar maiúsculas)', () async {
+    final remoto = RemotoAdminFake();
+    remoto.linhas['c3'] = {
+      'perfil_id': 'c3',
+      'tipo': 'pessoa',
+      'status_cadastro': 'pendente',
+      'perfis': {'nome': 'ana'},
+    };
+    final r = await CatadoresAdminRepositorioImpl(
+      remoto,
+    ).listar(StatusCadastro.pendente);
+    expect(r.map((c) => c.nome), ['ana', 'Maria']);
+  });
 }

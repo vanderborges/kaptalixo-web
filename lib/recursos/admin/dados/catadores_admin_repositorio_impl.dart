@@ -12,7 +12,8 @@ class CatadoresAdminRepositorioImpl implements CatadoresAdminRepositorio {
   @override
   Future<List<CatadorCadastro>> listar(StatusCadastro status) async {
     final linhas = await _remoto.listar(status.paraTexto());
-    return linhas.map(CatadorCadastro.fromJson).toList();
+    return linhas.map(CatadorCadastro.fromJson).toList()
+      ..sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));
   }
 
   @override
