@@ -7,6 +7,13 @@ enum MotivoFalhaCatador {
   ofertaIndisponivel,
   ofertaExpirada,
   semCapacidade,
+  rotaInexistente,
+  rotaInvalida,
+  paradaInexistente,
+  paradaInvalida,
+  coletasPendentes,
+  pontoInexistente,
+  parametroInvalido,
   generico;
 
   static MotivoFalhaCatador deCodigo(String? texto) {
@@ -20,6 +27,13 @@ enum MotivoFalhaCatador {
     if (t.contains('oferta_expirada')) return ofertaExpirada;
     if (t.contains('sem_capacidade')) return semCapacidade;
     if (t.contains('sem_permissao')) return semPermissao;
+    if (t.contains('rota_inexistente')) return rotaInexistente;
+    if (t.contains('rota_invalida')) return rotaInvalida;
+    if (t.contains('parada_inexistente')) return paradaInexistente;
+    if (t.contains('parada_invalida')) return paradaInvalida;
+    if (t.contains('coletas_pendentes')) return coletasPendentes;
+    if (t.contains('ponto_inexistente')) return pontoInexistente;
+    if (t.contains('parametro_invalido')) return parametroInvalido;
     return generico;
   }
 }
@@ -44,6 +58,15 @@ class FalhaCatador implements Exception {
         MotivoFalhaCatador.ofertaExpirada => 'Oferta expirada.',
         MotivoFalhaCatador.semCapacidade =>
           'Sem espaço para esses sacos na sua carga.',
+        MotivoFalhaCatador.rotaInexistente => 'Rota não encontrada.',
+        MotivoFalhaCatador.rotaInvalida => 'Esta rota não está ativa.',
+        MotivoFalhaCatador.paradaInexistente => 'Parada não encontrada.',
+        MotivoFalhaCatador.paradaInvalida =>
+          'Esta parada não aceita esta ação agora.',
+        MotivoFalhaCatador.coletasPendentes =>
+          'Ainda há coletas pendentes na rota.',
+        MotivoFalhaCatador.pontoInexistente => 'Ponto não encontrado.',
+        MotivoFalhaCatador.parametroInvalido => 'Dado inválido.',
         MotivoFalhaCatador.generico => 'Algo deu errado. Tente de novo.',
       };
 
