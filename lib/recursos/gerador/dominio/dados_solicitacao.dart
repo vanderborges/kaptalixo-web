@@ -31,6 +31,17 @@ class DadosSolicitacao {
   static const maxSacos = 20;
   static const maxObservacao = 280;
 
+  /// Limite do RPC `criar_solicitacao` para `endereco_texto`.
+  static const maxEndereco = 200;
+
+  /// Endereço sem espaços nas pontas e limitado a [maxEndereco] caracteres
+  /// (endereços do Nominatim costumam ser longos; o RPC rejeita > 200).
+  String get enderecoNormalizado {
+    final t = enderecoTexto.trim();
+    if (t.length <= maxEndereco) return t;
+    return t.substring(0, maxEndereco).trimRight();
+  }
+
   /// Valida conforme RN01 (espelha o RPC). Devolve a mensagem ou nulo.
   String? validar({DateTime? agora}) {
     final lat = posicao.latitude;

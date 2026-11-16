@@ -12,7 +12,7 @@ class SolicitacaoRepositorioImpl implements SolicitacaoRepositorio {
   static Map<String, dynamic> parametros(DadosSolicitacao d) => {
     'p_lat': d.posicao.latitude,
     'p_lng': d.posicao.longitude,
-    'p_endereco_texto': d.enderecoTexto.trim(),
+    'p_endereco_texto': d.enderecoNormalizado,
     'p_qtd_sacos': d.qtdSacos,
     'p_tamanho': d.tamanho.codigo,
     'p_materiais': d.materiais,
