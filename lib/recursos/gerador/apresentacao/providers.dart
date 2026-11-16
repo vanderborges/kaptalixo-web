@@ -5,9 +5,14 @@ import '../../../app/config.dart';
 import '../../../nucleo/localizacao/providers.dart';
 import '../../../nucleo/mapas/servico_geocodificacao.dart';
 import '../../../nucleo/mapas/servico_geocodificacao_nominatim.dart';
+import '../dados/materiais_repositorio_fake.dart';
 import '../dados/pontos_proximos_repositorio_fake.dart';
+import '../dados/solicitacao_repositorio_fake.dart';
+import '../dominio/material_reciclavel.dart';
+import '../dominio/materiais_repositorio.dart';
 import '../dominio/ponto_proximo.dart';
 import '../dominio/pontos_proximos_repositorio.dart';
+import '../dominio/solicitacao_repositorio.dart';
 
 /// Repositório de pontos próximos. Padrão: fake; `main.dart` troca pela
 /// implementação Supabase quando houver conexão (ver PEDIDOS.md).
@@ -68,3 +73,20 @@ final pontosProximosProvider = FutureProvider.autoDispose
       (ref, centro) =>
           ref.watch(pontosProximosRepositorioProvider).proximos(centro),
     );
+
+/// Repositório de solicitações. Padrão: fake; `main.dart` troca pelo Supabase
+/// (ver PEDIDOS.md).
+final solicitacaoRepositorioProvider = Provider<SolicitacaoRepositorio>(
+  (ref) => SolicitacaoRepositorioFake(),
+);
+
+/// Repositório de materiais. Padrão: fake.
+final materiaisRepositorioProvider = Provider<MateriaisRepositorio>(
+  (ref) => MateriaisRepositorioFake(),
+);
+
+/// Materiais disponíveis no formulário.
+final materiaisProvider = FutureProvider.autoDispose<List<MaterialReciclavel>>(
+  retry: _semRetentativa,
+  (ref) => ref.watch(materiaisRepositorioProvider).listar(),
+);
