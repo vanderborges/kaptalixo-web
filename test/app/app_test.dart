@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kaptalixo/app/app.dart';
 import 'package:kaptalixo/app/roteador.dart';
+import 'overrides_teste.dart';
 import 'package:kaptalixo/nucleo/modelos/papel.dart';
 import 'package:kaptalixo/nucleo/repositorios_base/sessao_repositorio.dart';
 import 'package:kaptalixo/recursos/auth/apresentacao/providers.dart';
@@ -10,7 +11,10 @@ import 'package:kaptalixo/recursos/auth/apresentacao/providers.dart';
 Future<void> abrir(WidgetTester tester, SessaoRepositorioFake repo) async {
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [sessaoRepositorioProvider.overrideWithValue(repo)],
+      overrides: [
+        sessaoRepositorioProvider.overrideWithValue(repo),
+        ...overridesTelasReais(),
+      ],
       child: const KaptalixoApp(),
     ),
   );
@@ -43,7 +47,7 @@ void main() {
       if (papel == Papel.admin) {
         expect(find.text('Administrador'), findsOneWidget);
       } else {
-        expect(find.text('Área: ${papel.rotulo} (em construção)'), findsOne);
+        expect(find.byType(Scaffold), findsWidgets);
       }
     });
 
@@ -114,7 +118,10 @@ void main() {
   ) async {
     final repo = SessaoRepositorioFake();
     final container = ProviderContainer(
-      overrides: [sessaoRepositorioProvider.overrideWithValue(repo)],
+      overrides: [
+        sessaoRepositorioProvider.overrideWithValue(repo),
+        ...overridesTelasReais(),
+      ],
     );
     container.read(roteadorProvider);
     expect(repo.temOuvintes, isTrue);

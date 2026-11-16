@@ -1,8 +1,9 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../nucleo/modelos/papel.dart';
 import '../nucleo/repositorios_base/sessao_repositorio.dart';
@@ -12,7 +13,14 @@ import '../recursos/auth/apresentacao/tela_entrar.dart';
 import '../recursos/admin/apresentacao/tela_admin.dart';
 import '../recursos/admin/apresentacao/tela_catador_admin.dart';
 import '../recursos/auth/apresentacao/tela_aguardando_aprovacao.dart';
-import 'placeholders.dart';
+import '../recursos/admin/apresentacao/tela_demo.dart';
+import '../recursos/catador/apresentacao/tela_home_catador.dart';
+import '../recursos/catador/apresentacao/tela_rota_ativa.dart';
+import '../recursos/gerador/apresentacao/tela_acompanhamento.dart';
+import '../recursos/gerador/apresentacao/tela_chamar_coleta.dart';
+import '../recursos/gerador/apresentacao/tela_home_gerador.dart';
+import '../recursos/ponto/apresentacao/tela_painel_ponto.dart';
+import 'acoes_app.dart';
 
 /// Rotas acessíveis sem login.
 const rotasPublicas = {'/entrar', '/cadastrar'};
@@ -51,6 +59,47 @@ class AtualizadorSessao extends ChangeNotifier {
   }
 }
 
+/// Tela inicial de cada papel (as telas reais de cada feature).
+Widget _telaInicial(Papel p) => switch (p) {
+  Papel.admin => const TelaAdmin(),
+  Papel.gerador => Consumer(
+    builder: (context, ref, _) => TelaHomeGerador(
+      tileProvider: ref.watch(tileProviderAppProvider),
+      acoes: const [BotaoSair()],
+    ),
+  ),
+  Papel.catador => Builder(
+    builder: (context) => TelaHomeCatador(
+      acoes: const [BotaoSair()],
+      aoAceitarOferta: (rotaId) => context.go('/catador/rota/$rotaId'),
+    ),
+  ),
+  Papel.ponto => TelaPainelPonto(acoes: const [BotaoSair()]),
+};
+
+/// Redireciona na próxima frame para [destino] (rota que exige `extra`).
+class _VoltarAoInicio extends StatefulWidget {
+  const _VoltarAoInicio(this.destino);
+
+  final String destino;
+
+  @override
+  State<_VoltarAoInicio> createState() => _VoltarAoInicioState();
+}
+
+class _VoltarAoInicioState extends State<_VoltarAoInicio> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.go(widget.destino);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
+}
+
 /// Cria o roteador do app com guarda por papel.
 GoRouter criarRoteador(
   SessaoRepositorio sessoes,
@@ -69,10 +118,59 @@ GoRouter criarRoteador(
       for (final p in Papel.values)
         GoRoute(
           path: p.rotaInicial,
-          builder: (context, state) => p == Papel.admin
-              ? const TelaAdmin()
-              : TelaPlaceholderPapel(papel: p),
+          builder: (context, state) => _telaInicial(p),
           routes: [
+            if (p == Papel.gerador) ...[
+              GoRoute(
+                path: 'chamar',
+                builder: (context, state) {
+                  final posicao = state.extra;
+                  if (posicao is! LatLng) {
+                    // Sem posição (ex.: recarga da página): volta ao início.
+                    return const _VoltarAoInicio('/gerador');
+                  }
+                  return Consumer(
+                    builder: (context, ref, _) => TelaChamarColeta(
+                      posicaoInicial: posicao,
+                      tileProvider: ref.watch(tileProviderAppProvider),
+                      aoCriada: (id) => context.go('/gerador/acompanhar/$id'),
+                    ),
+                  );
+                },
+              ),
+              GoRoute(
+                path: 'acompanhar/:id',
+                builder: (context, state) => Consumer(
+                  builder: (context, ref, _) => TelaAcompanhamento(
+                    solicitacaoId: state.pathParameters['id']!,
+                    tileProvider: ref.watch(tileProviderAppProvider),
+                    aoSair: () => context.go('/gerador'),
+                    aoNovaChamada: () => context.go('/gerador'),
+                  ),
+                ),
+              ),
+            ],
+            if (p == Papel.catador)
+              GoRoute(
+                path: 'rota/:id',
+                builder: (context, state) => Consumer(
+                  builder: (context, ref, _) => TelaRotaAtiva(
+                    rotaId: state.pathParameters['id']!,
+                    acoes: const [BotaoSair()],
+                    tileProvider: ref.watch(tileProviderAppProvider),
+                    aoSair: () => context.go('/catador'),
+                  ),
+                ),
+              ),
+            if (p == Papel.admin)
+              GoRoute(
+                path: 'demo',
+                builder: (context, state) => Consumer(
+                  builder: (context, ref, _) => TelaDemo(
+                    tileProvider: ref.watch(tileProviderAppProvider),
+                  ),
+                ),
+              ),
             if (p == Papel.admin)
               GoRoute(
                 path: 'catador/:id',
