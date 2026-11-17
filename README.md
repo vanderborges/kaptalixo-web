@@ -78,7 +78,7 @@ Preparação: banco recém-resetado (`db reset`), e o app aberto em 3 janelas (g
 4. **Catador**: recebe a oferta (home) e aceita ou recusa; ao recusar/expirar, o servidor oferece ao próximo. Aceitar leva a `/catador/rota/:id`, com o mapa da rota até o gerador e depois até o ponto de descarte (pode trocar de ponto).
 5. **Gerador**: vê o catador a caminho, ETA calculado no cliente e o **PIN** de coleta (só ele o vê). Segunda solicitação encaixada na rota ativa é feita pelo servidor (matching), depende do catador ainda estar elegível.
 6. **Catador**: avança as paradas; ao chegar no gerador digita o PIN que o gerador informa; coleta confirmada. Posição enviada a cada 5 s durante a rota.
-7. **Ponto** (o operador cujo ponto é o destino da rota; no seed, o que enxergar a entrega no painel): painel com entregas a caminho; "Pesar" abre `/ponto/pesar/:rotaId` (`TelaPesagem`), registra a pesagem por material e mostra o valor.
+7. **Ponto** (o operador cujo ponto é o destino da rota; no seed, o que enxergar a entrega no painel): painel com entregas a caminho; "Confirmar entrega" chama a RPC `confirmar_entrega` (sem pesagem) e a entrega sai da lista com a mensagem "Entrega confirmada".
 8. **Avaliação mútua**: o servidor tem a RPC `avaliar`, mas **não há tela** (ver limitações); esta etapa não pode ser demonstrada pela UI.
 
 Simulação de movimento (painel admin): as RPCs `demo_*` existem no banco (T1.6) e o `demo_snapshot` é validado pelo smoke contra o contrato do parser; a simulação pela UI não foi exercitada de ponta a ponta. O catador também pode andar "de verdade" por GPS do dispositivo.
@@ -91,7 +91,7 @@ Simulação de movimento (painel admin): as RPCs `demo_*` existem no banco (T1.6
 powershell -NoProfile -File repositorios/kaptalixo-web/scripts/smoke-demo.ps1 -Resetar
 ```
 
-Imprime PASS/FAIL por passo e sai com código 1 se algum falhar. Validado em 2026-11-16 (21 passos PASS, 1 aviso): login, disponibilidade, criação do pedido, PIN só para o gerador, matching/oferta, RLS (catador não lê PIN nem o pedido antes do aceite), aceite, paradas coleta+descarte, `demo_snapshot` sem PIN, iniciar rota, posição, chegada, PIN errado recusado (RN08), PIN correto, chegada ao ponto, `v_entrega_a_caminho` visível só ao operador certo, pesagem `registrar_entrega` com valor conferido (RN11), estado final (entregue/concluída/disponível) e pesagem duplicada recusada. Não cobre a UI Flutter.
+Imprime PASS/FAIL por passo e sai com código 1 se algum falhar. Validado em 2026-11-17 após a T6.3 (21 passos PASS, 0 aviso; passos 19 e 21 usam `confirmar_entrega`): login, disponibilidade, criação do pedido, PIN só para o gerador, matching/oferta, RLS (catador não lê PIN nem o pedido antes do aceite), aceite, paradas coleta+descarte, `demo_snapshot` sem PIN, iniciar rota, posição, chegada, PIN errado recusado (RN08), PIN correto, chegada ao ponto, `v_entrega_a_caminho` visível só ao operador certo, confirmação `confirmar_entrega`, estado final (entregue/concluída/disponível) e confirmação duplicada recusada. Não cobre a UI Flutter.
 
 ## 6. Limitações conhecidas (honestas)
 
@@ -102,7 +102,7 @@ Referências em `backlog/PEDIDOS.md`.
 - **Permissões de localização**: `AndroidManifest.xml` não declara `ACCESS_FINE/COARSE_LOCATION`, e não há pasta `ios/` (P-015). No Android o GPS não funciona até declará-las; no Windows, a localização do sistema precisa estar ativada. O modo simulação do catador só existe no painel admin; não há seletor de posição manual para o catador.
 - **`planejar-rota` (Edge Function) NÃO validada** (P-027): contra o banco local responde 422 `sem_paradas` (não lê o EWKB das paradas), então não há parada de descarte nem `ponto_destino_id` automáticos. O smoke contorna gravando-os com a service role local (passo 09b, com aviso). O app chama a função após o aceite (melhor esforço), mas o descarte só aparece quando P-027 for corrigido. `pontos_proximos` e `v_entrega_a_caminho` existem e foram validados no smoke; `v_atendimento_gerador` e o valor estimado em `v_oferta_resumo` não existem (P-019..P-023).
 - **ETA/polyline do gerador** são calculados no cliente (OSRM público ou haversine), não oficiais do servidor.
-- **Sem UI** para foto da solicitação e agendamento. A pesagem do ponto passa pelo roteador (`/ponto/pesar/:rotaId`, entrega via `extra`; sem ela, como numa recarga, volta ao painel).
+- **Sem UI** para foto da solicitação e agendamento. O ponto só confirma a entrega: **não há pesagem nem valor pago** (a RPC `registrar_entrega` segue no banco, sem tela).
 - **Serviços públicos** (OSRM, Nominatim, tiles) podem limitar ou falhar; Nominatim: 1 req/s.
 - **Build/execução**: validado apenas o alvo Windows desktop no desenvolvimento; testes de integração (`integration_test/`) ainda sem cenários E2E (só `helpers/`). Android, web e iOS não foram validados.
 - Auth é e-mail/senha local, sem confirmação; sem pagamento real nem push nativo (fora da POC).

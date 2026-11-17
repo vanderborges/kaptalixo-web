@@ -37,25 +37,6 @@ class PontoRemotoSupabase implements PontoRemoto {
   });
 
   @override
-  Future<List<Map<String, dynamic>>> precos() => _traduzir(() async {
-    final pontoId = await _pontoId();
-    if (pontoId == null) return <Map<String, dynamic>>[];
-    final dados = await _cliente
-        .from('ponto_precos')
-        .select('material_id, preco_kg, materiais(nome)')
-        .eq('ponto_id', pontoId)
-        .order('material_id');
-    return [
-      for (final l in dados)
-        {
-          'material_id': l['material_id'],
-          'preco_kg': l['preco_kg'],
-          'nome': (l['materiais'] as Map?)?['nome'],
-        },
-    ];
-  });
-
-  @override
   Stream<void> mudancas() {
     late final StreamController<void> ctrl;
     RealtimeChannel? canal;
@@ -102,23 +83,11 @@ class PontoRemotoSupabase implements PontoRemoto {
   }
 
   @override
-  Future<Map<String, dynamic>> registrarEntrega(
-    String rotaId,
-    List<Map<String, dynamic>> itens,
-  ) => _traduzir(() async {
+  Future<String> confirmarEntrega(String rotaId) => _traduzir(() async {
     final id = await _cliente.rpc<dynamic>(
-      'registrar_entrega',
-      params: {'p_rota': rotaId, 'p_itens': itens},
+      'confirmar_entrega',
+      params: {'p_rota': rotaId},
     );
-    final e = await _cliente
-        .from('entregas')
-        .select('id, peso_total_kg, valor_total')
-        .eq('id', id as String)
-        .single();
-    return {
-      'entrega_id': e['id'],
-      'peso_total_kg': e['peso_total_kg'],
-      'valor_total': e['valor_total'],
-    };
+    return id as String;
   });
 }

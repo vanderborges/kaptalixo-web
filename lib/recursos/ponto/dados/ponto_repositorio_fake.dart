@@ -2,28 +2,22 @@ import 'dart:async';
 
 import '../dominio/entrega_a_caminho.dart';
 import '../dominio/falha_ponto.dart';
-import '../dominio/pesagem.dart';
 import '../dominio/ponto_repositorio.dart';
 
-/// Fake em memória que imita `registrar_entrega`: valida pesos, exige preço
-/// do material, calcula o valor com [calcularPesagem] e conclui a entrega
-/// (some da lista a caminho).
+/// Fake em memória que imita `confirmar_entrega`: a rota precisa estar na
+/// lista a caminho e, ao confirmar, a entrega some da lista.
 class PontoRepositorioFake implements PontoRepositorio {
-  PontoRepositorioFake({
-    List<EntregaACaminho> entregas = const [],
-    List<MaterialPreco> precos = const [],
-  }) : _entregas = List.of(entregas),
-       _precos = List.of(precos);
+  PontoRepositorioFake({List<EntregaACaminho> entregas = const []})
+    : _entregas = List.of(entregas);
 
   final List<EntregaACaminho> _entregas;
-  final List<MaterialPreco> _precos;
   final _ctrl = StreamController<List<EntregaACaminho>>.broadcast();
 
-  /// Falha lançada (uma vez) na próxima chamada de registro.
+  /// Falha lançada (uma vez) na próxima confirmação.
   FalhaPonto? proximaFalha;
 
-  /// Entregas registradas: rotaId -> itens enviados.
-  final Map<String, List<ItemPesagem>> registradas = {};
+  /// Rotas cuja entrega foi confirmada.
+  final List<String> confirmadas = [];
   int assinaturas = 0;
 
   /// Publica nova lista (simula o Realtime).
@@ -50,13 +44,7 @@ class PontoRepositorioFake implements PontoRepositorio {
   }
 
   @override
-  Future<List<MaterialPreco>> precos() async => List.unmodifiable(_precos);
-
-  @override
-  Future<ResultadoEntrega> registrarEntrega(
-    String rotaId,
-    List<ItemPesagem> itens,
-  ) async {
+  Future<String> confirmarEntrega(String rotaId) async {
     final falha = proximaFalha;
     if (falha != null) {
       proximaFalha = null;
@@ -65,16 +53,9 @@ class PontoRepositorioFake implements PontoRepositorio {
     if (!_entregas.any((e) => e.rotaId == rotaId)) {
       throw const FalhaPonto(MotivoFalhaPonto.rotaInexistente);
     }
-    final resumo = calcularPesagem(itens, {
-      for (final p in _precos) p.materialId: p,
-    });
-    registradas[rotaId] = itens;
+    confirmadas.add(rotaId);
     _entregas.removeWhere((e) => e.rotaId == rotaId);
     _ctrl.add(List.unmodifiable(_entregas));
-    return ResultadoEntrega(
-      entregaId: 'entrega-$rotaId',
-      pesoTotalCentesimos: resumo.pesoTotalCentesimos,
-      valorTotalCentavos: resumo.valorTotalCentavos,
-    );
+    return 'entrega-$rotaId';
   }
 }
