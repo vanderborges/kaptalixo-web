@@ -2,17 +2,8 @@ import 'dart:async';
 
 import '../dominio/entrega_a_caminho.dart';
 import '../dominio/falha_ponto.dart';
-import '../dominio/pesagem.dart';
 import '../dominio/ponto_repositorio.dart';
 import 'ponto_remoto.dart';
-
-/// Converte numeric do banco (num ou texto) em centavos / centésimos.
-int _centi(Object? v) {
-  final s = (v ?? 0).toString();
-  final n = parsePesoKg(s);
-  if (n != null) return n;
-  return ((num.tryParse(s) ?? 0) * 100).round();
-}
 
 class PontoRepositorioImpl implements PontoRepositorio {
   PontoRepositorioImpl(this._remoto);
@@ -80,31 +71,6 @@ class PontoRepositorioImpl implements PontoRepositorio {
   }
 
   @override
-  Future<List<MaterialPreco>> precos() => _protegido(() async {
-    final linhas = await _remoto.precos();
-    return [
-      for (final l in linhas)
-        MaterialPreco(
-          materialId: (l['material_id'] as num).toInt(),
-          nome: (l['nome'] as String?) ?? 'Material',
-          precoKgCentavos: _centi(l['preco_kg']),
-        ),
-    ];
-  });
-
-  @override
-  Future<ResultadoEntrega> registrarEntrega(
-    String rotaId,
-    List<ItemPesagem> itens,
-  ) => _protegido(() async {
-    final r = await _remoto.registrarEntrega(rotaId, [
-      for (final i in itens)
-        {'material_id': i.materialId, 'peso_kg': i.pesoCentesimos / 100},
-    ]);
-    return ResultadoEntrega(
-      entregaId: r['entrega_id'] as String,
-      pesoTotalCentesimos: _centi(r['peso_total_kg']),
-      valorTotalCentavos: _centi(r['valor_total']),
-    );
-  });
+  Future<String> confirmarEntrega(String rotaId) =>
+      _protegido(() => _remoto.confirmarEntrega(rotaId));
 }

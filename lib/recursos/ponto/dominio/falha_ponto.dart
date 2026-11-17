@@ -4,8 +4,7 @@ enum MotivoFalhaPonto {
   rotaInexistente,
   rotaInvalida,
   coletasPendentes,
-  materialSemPreco,
-  parametroInvalido,
+  semColetas,
   generico;
 
   static MotivoFalhaPonto deCodigo(String? texto) {
@@ -14,8 +13,7 @@ enum MotivoFalhaPonto {
     if (t.contains('rota_inexistente')) return rotaInexistente;
     if (t.contains('rota_invalida')) return rotaInvalida;
     if (t.contains('coletas_pendentes')) return coletasPendentes;
-    if (t.contains('material_sem_preco')) return materialSemPreco;
-    if (t.contains('parametro_invalido')) return parametroInvalido;
+    if (t.contains('sem_coletas')) return semColetas;
     return generico;
   }
 }
@@ -36,8 +34,7 @@ class FalhaPonto implements Exception {
         MotivoFalhaPonto.rotaInvalida => 'Esta entrega não está em andamento.',
         MotivoFalhaPonto.coletasPendentes =>
           'O catador ainda tem coletas pendentes.',
-        MotivoFalhaPonto.materialSemPreco => 'Material sem preço neste ponto.',
-        MotivoFalhaPonto.parametroInvalido => 'Confira os pesos informados.',
+        MotivoFalhaPonto.semColetas => 'Esta entrega não tem coletas.',
         MotivoFalhaPonto.generico => 'Algo deu errado. Tente de novo.',
       };
 

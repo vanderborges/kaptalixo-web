@@ -1,6 +1,6 @@
 <#
   Smoke da demo (T7.3): executa por RPC/REST, contra o Supabase LOCAL, o fluxo
-  gerador -> catador aceita -> coleta com PIN -> entrega e pesagem no ponto,
+  gerador -> catador aceita -> coleta com PIN -> confirmacao da entrega no ponto,
   e imprime PASS/FAIL por passo. Sai com codigo 1 se algum passo falhar.
 
   Uso (a partir da pasta Kaptalixo, com `supabase start` ativo):
@@ -115,7 +115,7 @@ Write-Host "Smoke da demo contra $($script:api)" -ForegroundColor Cyan
 # Estado compartilhado entre passos (preenchido dentro dos blocos).
 $script:tokG = $null; $script:tokC = $null; $script:tokP = $null; $script:tokA = $null
 $script:solicitacao = $null; $script:oferta = $null; $script:rota = $null; $script:pin = $null
-$script:ponto = $null; $script:itens = $null
+$script:ponto = $null; $script:entrega = $null
 $script:paradaColeta = $null; $script:paradaDescarte = $null
 
 Passo '01 login gerador1 e admin' {
@@ -186,7 +186,7 @@ Passo '08 gerador ve a solicitacao aceita' {
 # O planejar-rota (Edge Function) so roda com `supabase functions serve` e, na versao atual,
 # nao interpreta o hex EWKB que o PostgREST devolve para geography (devolve 422 sem_paradas;
 # registrado em backlog/PEDIDOS.md, P-027). Sem ele nao existe parada de descarte. Para o
-# smoke chegar a pesagem, o passo 09b reproduz o que a funcao deve gravar (descarte + ponto)
+# smoke chegar a confirmacao, o passo 09b reproduz o que a funcao deve gravar (descarte + ponto)
 # com a service role LOCAL. Com -ExigirPlanejador o AVISO vira FAIL e o contorno e pulado.
 $script:planejou = $false
 try {
@@ -306,20 +306,13 @@ Passo '18 operador do ponto ve a entrega (v_entrega_a_caminho)' {
   "ponto$n; catador=$($e.catador_nome); sacos=$($e.qtd_sacos); chegou=$($e.chegou); 3 outros operadores nao veem"
 }
 
-Passo '19 pesagem: registrar_entrega com pesos por material (RN11)' {
-  $precos = Consultar $script:tokP "ponto_precos?ponto_id=eq.$($script:ponto)&select=material_id,preco_kg&order=material_id&limit=2"
-  if ($precos.Count -lt 2) { throw 'ponto sem 2 precos' }
-  $script:itens = @(
-    @{ material_id = $precos[0].material_id; peso_kg = 3.5 },
-    @{ material_id = $precos[1].material_id; peso_kg = 2 }
-  )
-  $esperado = [math]::Round([decimal]3.5 * [decimal]$precos[0].preco_kg, 2, [MidpointRounding]::AwayFromZero) + [math]::Round([decimal]2 * [decimal]$precos[1].preco_kg, 2, [MidpointRounding]::AwayFromZero)
-  $entrega = Rpc $script:tokP 'registrar_entrega' @{ p_rota = $script:rota; p_itens = $script:itens }
-  $en = Consultar $script:tokP "entregas?id=eq.$entrega&select=peso_total_kg,valor_total"
-  if ([math]::Abs([double]$en[0].valor_total - $esperado) -gt 0.005) {
-    throw "valor $($en[0].valor_total) != esperado $esperado"
-  }
-  "entrega $entrega; peso=$($en[0].peso_total_kg) kg; valor=R$ $($en[0].valor_total) (confere RN11)"
+Passo '19 confirmacao: confirmar_entrega (sem pesagem)' {
+  $entrega = Rpc $script:tokP 'confirmar_entrega' @{ p_rota = $script:rota }
+  if (-not $entrega) { throw 'confirmar_entrega nao devolveu o id da entrega' }
+  $script:entrega = $entrega
+  $en = Consultar $script:tokP "entregas?id=eq.$entrega&select=id"
+  if ($en.Count -ne 1) { throw 'entrega nao encontrada apos confirmar' }
+  "entrega $entrega confirmada"
 }
 
 Passo '20 estado final: entregue, rota concluida, catador disponivel' {
@@ -332,10 +325,10 @@ Passo '20 estado final: entregue, rota concluida, catador disponivel' {
   'entregue / concluida / disponivel'
 }
 
-Passo '21 segunda pesagem na mesma rota e recusada' {
-  if (-not $script:tokP -or -not $script:itens) { throw 'sem pesagem anterior para repetir' }
+Passo '21 segunda confirmacao na mesma rota e recusada' {
+  if (-not $script:tokP -or -not $script:entrega) { throw 'sem confirmacao anterior para repetir' }
   $recusou = $false
-  try { $null = Rpc $script:tokP 'registrar_entrega' @{ p_rota = $script:rota; p_itens = $script:itens } }
+  try { $null = Rpc $script:tokP 'confirmar_entrega' @{ p_rota = $script:rota } }
   catch { $recusou = $true }
   if (-not $recusou) { throw 'aceitou entrega duplicada' }
   'recusada'

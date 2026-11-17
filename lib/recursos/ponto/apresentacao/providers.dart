@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../dados/ponto_repositorio_fake.dart';
 import '../dominio/entrega_a_caminho.dart';
-import '../dominio/pesagem.dart';
 import '../dominio/ponto_repositorio.dart';
 
 /// Repositório do painel do ponto. Padrão: fake; `main.dart` troca pelo
@@ -16,11 +15,6 @@ final entregasACaminhoProvider =
     StreamProvider.autoDispose<List<EntregaACaminho>>(
       (ref) => ref.watch(pontoRepositorioProvider).observarEntregas(),
     );
-
-/// Tabela de preços vigente do ponto.
-final precosPontoProvider = FutureProvider.autoDispose<List<MaterialPreco>>(
-  (ref) => ref.watch(pontoRepositorioProvider).precos(),
-);
 
 /// Intervalo de atualização dos ETAs na tela (testes podem sobrescrever).
 final tickPontoProvider = Provider<Duration>(

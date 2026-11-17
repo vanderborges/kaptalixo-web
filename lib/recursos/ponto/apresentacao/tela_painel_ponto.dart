@@ -6,17 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../dominio/entrega_a_caminho.dart';
 import '../dominio/falha_ponto.dart';
 import 'providers.dart';
-import 'tela_pesagem.dart';
 
-/// Painel do ponto (UC11): entregas a caminho com ETA; toque para pesar.
+/// Painel do ponto (UC11): entregas a caminho com ETA e confirmação.
 class TelaPainelPonto extends ConsumerStatefulWidget {
-  const TelaPainelPonto({super.key, this.acoes = const [], this.aoPesar});
+  const TelaPainelPonto({super.key, this.acoes = const []});
 
   /// Ações da barra (ex.: sair), injetadas pelo roteador.
   final List<Widget> acoes;
-
-  /// Substitui a navegação padrão para a pesagem.
-  final void Function(EntregaACaminho entrega)? aoPesar;
 
   @override
   ConsumerState<TelaPainelPonto> createState() => _TelaPainelPontoState();
@@ -25,6 +21,7 @@ class TelaPainelPonto extends ConsumerStatefulWidget {
 class _TelaPainelPontoState extends ConsumerState<TelaPainelPonto> {
   Timer? _tick;
   DateTime? _agora;
+  final _confirmando = <String>{};
 
   @override
   void initState() {
@@ -41,15 +38,23 @@ class _TelaPainelPontoState extends ConsumerState<TelaPainelPonto> {
     super.dispose();
   }
 
-  void _pesar(EntregaACaminho e) {
-    final cb = widget.aoPesar;
-    if (cb != null) {
-      cb(e);
-      return;
+  Future<void> _confirmar(EntregaACaminho e) async {
+    if (_confirmando.contains(e.rotaId)) return;
+    final mensagens = ScaffoldMessenger.of(context);
+    setState(() => _confirmando.add(e.rotaId));
+    String texto;
+    try {
+      await ref.read(pontoRepositorioProvider).confirmarEntrega(e.rotaId);
+      texto = 'Entrega confirmada';
+    } on FalhaPonto catch (f) {
+      texto = f.texto;
+    } catch (_) {
+      texto = const FalhaPonto(MotivoFalhaPonto.generico).texto;
     }
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => TelaPesagem(entrega: e)));
+    mensagens
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(texto)));
+    if (mounted) setState(() => _confirmando.remove(e.rotaId));
   }
 
   @override
@@ -86,7 +91,8 @@ class _TelaPainelPontoState extends ConsumerState<TelaPainelPonto> {
                 itemBuilder: (_, i) => _CartaoEntrega(
                   entrega: lista[i],
                   agora: _agora ?? DateTime.now(),
-                  aoPesar: () => _pesar(lista[i]),
+                  confirmando: _confirmando.contains(lista[i].rotaId),
+                  aoConfirmar: () => _confirmar(lista[i]),
                 ),
               ),
       ),
@@ -98,12 +104,14 @@ class _CartaoEntrega extends StatelessWidget {
   const _CartaoEntrega({
     required this.entrega,
     required this.agora,
-    required this.aoPesar,
+    required this.confirmando,
+    required this.aoConfirmar,
   });
 
   final EntregaACaminho entrega;
   final DateTime agora;
-  final VoidCallback aoPesar;
+  final bool confirmando;
+  final VoidCallback aoConfirmar;
 
   String _quando() {
     if (entrega.chegou) return 'Chegou';
@@ -133,8 +141,10 @@ class _CartaoEntrega extends StatelessWidget {
               width: double.infinity,
               height: 56,
               child: FilledButton(
-                onPressed: aoPesar,
-                child: const Text('Pesar'),
+                onPressed: confirmando ? null : aoConfirmar,
+                child: Text(
+                  confirmando ? 'Confirmando...' : 'Confirmar entrega',
+                ),
               ),
             ),
           ],

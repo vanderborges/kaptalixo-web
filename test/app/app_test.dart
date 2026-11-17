@@ -7,8 +7,6 @@ import 'overrides_teste.dart';
 import 'package:kaptalixo/nucleo/modelos/papel.dart';
 import 'package:kaptalixo/nucleo/repositorios_base/sessao_repositorio.dart';
 import 'package:kaptalixo/recursos/auth/apresentacao/providers.dart';
-import 'package:kaptalixo/recursos/ponto/apresentacao/tela_pesagem.dart';
-import 'package:kaptalixo/recursos/ponto/dominio/entrega_a_caminho.dart';
 
 Future<void> abrir(WidgetTester tester, SessaoRepositorioFake repo) async {
   await tester.pumpWidget(
@@ -82,52 +80,6 @@ void main() {
     await tester.tap(find.byTooltip('Sair'));
     await tester.pumpAndSettle();
     expect(localAtual(tester), '/entrar');
-  });
-
-  group('pesagem do ponto pelo roteador', () {
-    testWidgets('abre TelaPesagem com a entrega recebida no extra', (
-      tester,
-    ) async {
-      await abrir(tester, SessaoRepositorioFake(papel: Papel.ponto));
-      final container = ProviderScope.containerOf(
-        tester.element(find.byType(MaterialApp)),
-      );
-      container
-          .read(roteadorProvider)
-          .go(
-            '/ponto/pesar/r1',
-            extra: const EntregaACaminho(
-              rotaId: 'r1',
-              catadorNome: 'Joao',
-              sacos: 2,
-              chegou: true,
-            ),
-          );
-      await tester.pumpAndSettle();
-      expect(localAtual(tester), '/ponto/pesar/r1');
-      expect(find.byType(TelaPesagem), findsOneWidget);
-    });
-
-    testWidgets('sem extra (recarga) volta ao painel', (tester) async {
-      await abrir(tester, SessaoRepositorioFake(papel: Papel.ponto));
-      final container = ProviderScope.containerOf(
-        tester.element(find.byType(MaterialApp)),
-      );
-      container.read(roteadorProvider).go('/ponto/pesar/r1');
-      await tester.pumpAndSettle();
-      expect(localAtual(tester), '/ponto');
-      expect(find.byType(TelaPesagem), findsNothing);
-    });
-
-    testWidgets('catador nao acessa a rota de pesagem', (tester) async {
-      await abrir(tester, SessaoRepositorioFake(papel: Papel.catador));
-      final container = ProviderScope.containerOf(
-        tester.element(find.byType(MaterialApp)),
-      );
-      container.read(roteadorProvider).go('/ponto/pesar/r1');
-      await tester.pumpAndSettle();
-      expect(localAtual(tester), '/catador');
-    });
   });
 
   group('redirecionar', () {

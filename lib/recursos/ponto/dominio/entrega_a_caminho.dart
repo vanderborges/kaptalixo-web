@@ -36,16 +36,3 @@ class EntregaACaminho {
     return d <= 0 ? 0 : (d / 60).ceil();
   }
 }
-
-/// Resultado de `registrar_entrega` exibido ao ponto.
-class ResultadoEntrega {
-  const ResultadoEntrega({
-    required this.entregaId,
-    required this.pesoTotalCentesimos,
-    required this.valorTotalCentavos,
-  });
-
-  final String entregaId;
-  final int pesoTotalCentesimos;
-  final int valorTotalCentavos;
-}
