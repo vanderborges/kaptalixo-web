@@ -23,7 +23,10 @@ List<LatLng> decodificarPolyline(String codigo, {int precisao = 5}) {
       resultado |= (b & 0x1f) << deslocamento;
       deslocamento += 5;
     } while (b >= 0x20);
-    return (resultado & 1) != 0 ? ~(resultado >> 1) : (resultado >> 1);
+    // Sem `~`: no Dart compilado para web (JavaScript) o `~` devolve um
+    // inteiro de 32 bits SEM sinal, o que transformava todo delta negativo em
+    // um valor enorme (ex.: latitude 171775). `-x - 1` e igual a `~x` com sinal.
+    return (resultado & 1) != 0 ? -(resultado >> 1) - 1 : (resultado >> 1);
   }
 
   while (i < codigo.length) {
