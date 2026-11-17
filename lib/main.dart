@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'app/acoes_app.dart';
 import 'app/app.dart';
 import 'app/config.dart';
 import 'recursos/admin/apresentacao/demo_providers.dart';
@@ -51,6 +52,12 @@ Future<void> main() async {
     overrides.add(authRepositorioProvider.overrideWithValue(auth));
     final cliente = Supabase.instance.client;
     overrides.addAll([
+      planejarRotaProvider.overrideWithValue((rotaId) async {
+        await cliente.functions.invoke(
+          'planejar-rota',
+          body: {'rota_id': rotaId},
+        );
+      }),
       demoRepositorioProvider.overrideWithValue(
         DemoRepositorioImpl(DemoRemotoSupabase(cliente)),
       ),

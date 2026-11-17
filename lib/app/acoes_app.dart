@@ -19,3 +19,10 @@ class BotaoSair extends ConsumerWidget {
     onPressed: () => ref.read(sessaoRepositorioProvider).sair(),
   );
 }
+
+/// Pede o planejamento da rota (Edge Function `planejar-rota`) após o aceite.
+/// Por padrão não faz nada (modo fake/testes); com Supabase o `main` injeta a
+/// chamada real. Melhor esforço: falhas não impedem abrir a rota.
+final planejarRotaProvider = Provider<Future<void> Function(String rotaId)>(
+  (ref) => (rotaId) async {},
+);
