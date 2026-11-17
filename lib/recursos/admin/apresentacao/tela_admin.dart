@@ -33,6 +33,11 @@ class TelaAdmin extends ConsumerWidget {
         title: const Text('Administrador'),
         actions: [
           IconButton(
+            tooltip: 'Painel de demonstração',
+            icon: const Icon(Icons.science_outlined),
+            onPressed: () => context.go('/admin/demo'),
+          ),
+          IconButton(
             tooltip: 'Atualizar lista',
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.invalidate(catadoresListaProvider),

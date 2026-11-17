@@ -11,6 +11,8 @@ import 'package:kaptalixo/recursos/auth/apresentacao/providers.dart';
 import 'package:kaptalixo/recursos/auth/dados/auth_repositorio_fake.dart';
 import 'package:kaptalixo/recursos/auth/dominio/dados_cadastro.dart';
 
+import '../../app/overrides_teste.dart';
+
 Future<void> abrir(
   WidgetTester tester,
   AuthRepositorioFake repo, {
@@ -23,6 +25,7 @@ Future<void> abrir(
     ProviderScope(
       overrides: [
         authRepositorioProvider.overrideWithValue(repo),
+        ...overridesTelasReais(),
         if (papeis != null)
           papeisCadastraveisProvider.overrideWithValue(papeis),
       ],
