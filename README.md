@@ -68,7 +68,7 @@ Definidos em `repositorios/kaptalixo-api/supabase/seed.sql` (**só POC local**):
 
 ## 5. Roteiro de demonstração (≈ 5 min)
 
-Base: `docs/01` §9. Abaixo, o que o código realmente suporta hoje e como executar. O que depende de algo ausente está marcado.
+Base: `docs/01` §9. Abaixo, o que o código realmente suporta hoje e como executar. O que o smoke automatizado cobre está descrito logo após o roteiro.
 
 Preparação: banco recém-resetado (`db reset`), e o app aberto em 3 janelas (gerador, catador, admin). Atenção: instâncias do app na mesma máquina e no mesmo navegador/perfil compartilham a sessão salva; para três papéis simultâneos use instâncias com perfis de armazenamento distintos (por exemplo, builds/alvos diferentes: Windows + Android/emulador + Chrome em janela anônima). Esse arranjo de 3 telas não foi validado de ponta a ponta.
 
@@ -78,21 +78,31 @@ Preparação: banco recém-resetado (`db reset`), e o app aberto em 3 janelas (g
 4. **Catador**: recebe a oferta (home) e aceita ou recusa; ao recusar/expirar, o servidor oferece ao próximo. Aceitar leva a `/catador/rota/:id`, com o mapa da rota até o gerador e depois até o ponto de descarte (pode trocar de ponto).
 5. **Gerador**: vê o catador a caminho, ETA calculado no cliente e o **PIN** de coleta (só ele o vê). Segunda solicitação encaixada na rota ativa é feita pelo servidor (matching), depende do catador ainda estar elegível.
 6. **Catador**: avança as paradas; ao chegar no gerador digita o PIN que o gerador informa; coleta confirmada. Posição enviada a cada 5 s durante a rota.
-7. **Ponto** (`ponto1@`): painel com entregas a caminho; na chegada registra a pesagem por material (`TelaPesagem`) e vê o valor.
+7. **Ponto** (o operador cujo ponto é o destino da rota; no seed, o que enxergar a entrega no painel): painel com entregas a caminho; "Pesar" abre `/ponto/pesar/:rotaId` (`TelaPesagem`), registra a pesagem por material e mostra o valor.
 8. **Avaliação mútua**: o servidor tem a RPC `avaliar`, mas **não há tela** (ver limitações); esta etapa não pode ser demonstrada pela UI.
 
-Simulação de movimento (passo 6 do roteiro original, painel admin): a tela existe, mas depende de RPCs que ainda não estão no banco (limitações). Enquanto isso, o catador anda "de verdade" por GPS do dispositivo.
+Simulação de movimento (painel admin): as RPCs `demo_*` existem no banco (T1.6) e o `demo_snapshot` é validado pelo smoke contra o contrato do parser; a simulação pela UI não foi exercitada de ponta a ponta. O catador também pode andar "de verdade" por GPS do dispositivo.
+
+### Smoke da demo (backend, via RPC/REST)
+
+`scripts/smoke-demo.ps1`, a partir da pasta Kaptalixo, com `supabase start` ativo. `-Resetar` roda `db reset` antes e é necessário para repetir (o smoke consome o pedido do `gerador1`):
+
+```
+powershell -NoProfile -File repositorios/kaptalixo-web/scripts/smoke-demo.ps1 -Resetar
+```
+
+Imprime PASS/FAIL por passo e sai com código 1 se algum falhar. Validado em 2026-11-16 (21 passos PASS, 1 aviso): login, disponibilidade, criação do pedido, PIN só para o gerador, matching/oferta, RLS (catador não lê PIN nem o pedido antes do aceite), aceite, paradas coleta+descarte, `demo_snapshot` sem PIN, iniciar rota, posição, chegada, PIN errado recusado (RN08), PIN correto, chegada ao ponto, `v_entrega_a_caminho` visível só ao operador certo, pesagem `registrar_entrega` com valor conferido (RN11), estado final (entregue/concluída/disponível) e pesagem duplicada recusada. Não cobre a UI Flutter.
 
 ## 6. Limitações conhecidas (honestas)
 
 Referências em `backlog/PEDIDOS.md`.
 
-- **RPCs `demo_*` ausentes no banco** (P-024/P-025): só `resetar_demo` existe. No painel `/admin/demo`, "Criar catadores fictícios", "Criar pedido fictício", o snapshot do mapa/eventos e a simulação de movimento dependem de `demo_snapshot`, `demo_criar_catadores`, `demo_criar_pedido`, `demo_mover_catador` e vão falhar/ficar vazios até o `dev-db` entregá-las. O contrato JSON de `demo_snapshot` também está divergente entre o parser e o pedido (P-025). Reset < 10 s não foi medido.
+- **RPCs `demo_*`** existem no banco (T1.6) e o contrato de `demo_snapshot` bate com o parser (validado no smoke). "Criar catadores/pedido fictício" e "mover catador" não foram exercitados pela UI nem pelo smoke.
 - **Avaliação sem tela** (T3.4/T5.4): a RPC `avaliar` existe, o app não tem UI; `aoAvaliar` não está ligado.
 - **Permissões de localização**: `AndroidManifest.xml` não declara `ACCESS_FINE/COARSE_LOCATION`, e não há pasta `ios/` (P-015). No Android o GPS não funciona até declará-las; no Windows, a localização do sistema precisa estar ativada. O modo simulação do catador só existe no painel admin; não há seletor de posição manual para o catador.
-- **Backend dos pedidos P-016..P-023 (dev-db)** em aberto: RPC `pontos_proximos` e visão `v_entrega_a_caminho` não existem nas migrations (lista de pontos próximos vem vazia; painel do ponto sem entregas a caminho), e publicações Realtime/GRANTs pedidos não foram confirmados. Visões existentes: `v_catador_privado`, `v_oferta_resumo`, `v_rota_catador`, `v_solicitacao_catador`, `v_solicitacao_gerador`. Isso pode quebrar etapas do roteiro; valide cada uma.
+- **`planejar-rota` (Edge Function) NÃO validada** (P-027): contra o banco local responde 422 `sem_paradas` (não lê o EWKB das paradas), então não há parada de descarte nem `ponto_destino_id` automáticos. O smoke contorna gravando-os com a service role local (passo 09b, com aviso). O app chama a função após o aceite (melhor esforço), mas o descarte só aparece quando P-027 for corrigido. `pontos_proximos` e `v_entrega_a_caminho` existem e foram validados no smoke; `v_atendimento_gerador` e o valor estimado em `v_oferta_resumo` não existem (P-019..P-023).
 - **ETA/polyline do gerador** são calculados no cliente (OSRM público ou haversine), não oficiais do servidor.
-- **Wiring parcial**: pesagem do ponto abre por `Navigator.push` padrão; foto da solicitação e agendamento não têm UI.
+- **Sem UI** para foto da solicitação e agendamento. A pesagem do ponto passa pelo roteador (`/ponto/pesar/:rotaId`, entrega via `extra`; sem ela, como numa recarga, volta ao painel).
 - **Serviços públicos** (OSRM, Nominatim, tiles) podem limitar ou falhar; Nominatim: 1 req/s.
 - **Build/execução**: validado apenas o alvo Windows desktop no desenvolvimento; testes de integração (`integration_test/`) ainda sem cenários E2E (só `helpers/`). Android, web e iOS não foram validados.
 - Auth é e-mail/senha local, sem confirmação; sem pagamento real nem push nativo (fora da POC).

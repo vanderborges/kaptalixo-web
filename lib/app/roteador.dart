@@ -20,6 +20,8 @@ import '../recursos/gerador/apresentacao/tela_acompanhamento.dart';
 import '../recursos/gerador/apresentacao/tela_chamar_coleta.dart';
 import '../recursos/gerador/apresentacao/tela_home_gerador.dart';
 import '../recursos/ponto/apresentacao/tela_painel_ponto.dart';
+import '../recursos/ponto/apresentacao/tela_pesagem.dart';
+import '../recursos/ponto/dominio/entrega_a_caminho.dart';
 import 'acoes_app.dart';
 
 /// Rotas acessíveis sem login.
@@ -68,13 +70,26 @@ Widget _telaInicial(Papel p) => switch (p) {
       acoes: const [BotaoSair()],
     ),
   ),
-  Papel.catador => Builder(
-    builder: (context) => TelaHomeCatador(
+  Papel.catador => Consumer(
+    builder: (context, ref, _) => TelaHomeCatador(
       acoes: const [BotaoSair()],
-      aoAceitarOferta: (rotaId) => context.go('/catador/rota/$rotaId'),
+      aoAceitarOferta: (rotaId) {
+        // Dispara o planejamento (ordem, ETA, ponto de descarte); a rota abre
+        // já e a tela atualiza quando o servidor gravar o resultado.
+        unawaited(
+          ref.read(planejarRotaProvider)(rotaId).catchError((Object _) {}),
+        );
+        context.go('/catador/rota/$rotaId');
+      },
     ),
   ),
-  Papel.ponto => TelaPainelPonto(acoes: const [BotaoSair()]),
+  Papel.ponto => Builder(
+    builder: (context) => TelaPainelPonto(
+      acoes: const [BotaoSair()],
+      aoPesar: (entrega) =>
+          context.push('/ponto/pesar/${entrega.rotaId}', extra: entrega),
+    ),
+  ),
 };
 
 /// Redireciona na próxima frame para [destino] (rota que exige `extra`).
@@ -161,6 +176,22 @@ GoRouter criarRoteador(
                     aoSair: () => context.go('/catador'),
                   ),
                 ),
+              ),
+            if (p == Papel.ponto)
+              GoRoute(
+                path: 'pesar/:rotaId',
+                builder: (context, state) {
+                  final entrega = state.extra;
+                  if (entrega is! EntregaACaminho ||
+                      entrega.rotaId != state.pathParameters['rotaId']) {
+                    // Sem a entrega (ex.: recarga da página): volta ao painel.
+                    return const _VoltarAoInicio('/ponto');
+                  }
+                  return TelaPesagem(
+                    entrega: entrega,
+                    aoConcluir: () => context.go('/ponto'),
+                  );
+                },
               ),
             if (p == Papel.admin)
               GoRoute(

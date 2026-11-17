@@ -17,6 +17,9 @@ class DemoRemotoSupabase implements DemoRemoto {
       rethrow;
     } on PostgrestException catch (e) {
       throw FalhaAdmin.deRpc(e.code, e.message);
+    } on TypeError {
+      // Resposta fora do contrato (ex.: `r as Map` com null/lista).
+      throw const FalhaAdmin(CodigoFalhaAdmin.desconhecida);
     } on Exception catch (e) {
       final texto = e.toString();
       if (texto.contains('SocketException') ||
