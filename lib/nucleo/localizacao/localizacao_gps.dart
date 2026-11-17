@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -70,8 +72,18 @@ class LocalizacaoGps implements ServicoLocalizacao {
     precisaoMetros: p.accuracy,
   );
 
+  /// Sem limite de tempo o navegador/desktop sem GPS fica carregando para
+  /// sempre; ao estourar, a UI cai no endereco manual.
+  static const _limite = Duration(seconds: 15);
+
   @override
-  Future<Posicao> atual() async {
+  Future<Posicao> atual() => _atual().timeout(
+    _limite,
+    onTimeout: () =>
+        throw const FalhaLocalizacao(MotivoFalhaLocalizacao.indisponivel),
+  );
+
+  Future<Posicao> _atual() async {
     await _garantirAcesso();
     return _converter(await _gps.posicaoAtual());
   }
