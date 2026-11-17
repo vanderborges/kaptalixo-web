@@ -1,19 +1,110 @@
 # kaptalixo-web
 
-App Flutter do Kaptalixo (gerador, catador, ponto e admin). Estrutura e convenções: `docs/04` da pasta de especificação.
+App Flutter do Kaptalixo ("Uber da reciclagem"): gerador, catador, ponto de coleta e admin. Este README leva um ambiente limpo (Windows) até a demonstração e lista, sem enfeite, o que ainda NÃO funciona. Convenções: `docs/04` da pasta de especificação.
+
+O projeto tem dois repositórios irmãos: este (front) e `kaptalixo-api` (Supabase: banco, RPCs, seed). Este guia assume a estrutura `Kaptalixo/repositorios/{kaptalixo-web,kaptalixo-api}` e a pasta `Kaptalixo/scripts/`.
+
+## 1. Pré-requisitos
+
+- Git, Flutter SDK (Dart ^3.12), Docker Desktop (em execução), Supabase CLI. Para o alvo Windows: Visual Studio com "Desenvolvimento para desktop com C++".
+- Opcional: Deno (testes da Edge Function), `gh` (fluxo de PR).
+- Conferência automática, a partir da pasta `Kaptalixo`:
 
 ```
+scripts\preparar-ambiente.ps1
+flutter doctor
+```
+
+## 2. Subir a API local (Supabase)
+
+A partir da pasta `Kaptalixo` (sem `cd`; o CLI aceita `--workdir`):
+
+```
+supabase start --workdir repositorios/kaptalixo-api
+supabase db reset --workdir repositorios/kaptalixo-api
+supabase status --workdir repositorios/kaptalixo-api
+```
+
+- `db reset` aplica as migrations e o `supabase/seed.sql` (usuários, pontos, preços, parâmetros; liga `modo_demo`).
+- `supabase status` mostra a URL (`http://127.0.0.1:54321`) e a chave pública anon local. Dependendo da versão do CLI ela aparece como "anon key" ou "Publishable"; se não aparecer, `supabase status -o env` lista `ANON_KEY`. É uma chave local de desenvolvimento: não a commite.
+- Para parar: `supabase stop --workdir repositorios/kaptalixo-api`.
+
+### Mapas, rotas e busca de endereço (OSRM / Nominatim / tiles)
+
+Não há instância local no repositório. Por padrão o app usa os servidores públicos (`router.project-osrm.org`, `nominatim.openstreetmap.org`, `tile.openstreetmap.org`), que são "melhor esforço", têm limites de uso e exigem internet. Para instâncias próprias, passe as URLs por `--dart-define` (seção 3). Sem OSRM o app recorre à estimativa em linha reta (haversine) onde implementado.
+
+## 3. Rodar o app
+
+```
+cd repositorios\kaptalixo-web
 flutter pub get
-flutter analyze
-flutter test
-flutter run -d windows --dart-define=SUPABASE_URL=http://127.0.0.1:54321 --dart-define=SUPABASE_ANON_KEY=<chave local>
+flutter run -d windows --dart-define=SUPABASE_URL=http://127.0.0.1:54321 --dart-define=SUPABASE_ANON_KEY=<chave anon local>
 ```
 
-Variáveis `--dart-define`: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `OSRM_BASE_URL`, `NOMINATIM_BASE_URL`, `TILE_URL`, `CIDADE_DEMO_LAT`, `CIDADE_DEMO_LNG` (ver `lib/app/config.dart`). Nunca commitar segredos.
+Variáveis `--dart-define` (ver `lib/app/config.dart`):
 
-## Login em desenvolvimento (seed local)
+| Variável | Padrão |
+|---|---|
+| `SUPABASE_URL` | `http://127.0.0.1:54321` |
+| `SUPABASE_ANON_KEY` | sem padrão |
+| `OSRM_BASE_URL` | `https://router.project-osrm.org` |
+| `NOMINATIM_BASE_URL` | `https://nominatim.openstreetmap.org` |
+| `TILE_URL` | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` |
+| `CIDADE_DEMO_LAT` / `CIDADE_DEMO_LNG` | `-23.5505` / `-46.6333` (São Paulo) |
 
-Sem `SUPABASE_ANON_KEY` o app usa um repositório de auth falso (`<papel>@kaptalixo.dev`, `pendente@kaptalixo.dev`). Com a chave do `supabase start`, entra de verdade com os usuários do seed (**só POC local**):
+Observações:
+
+- **Sem `SUPABASE_ANON_KEY` o app sobe em modo fake**: login com `<papel>@kaptalixo.dev` (e `pendente@kaptalixo.dev`) e repositórios falsos, sem backend. Serve para ver as telas, não para a demo.
+- Emulador Android não enxerga `127.0.0.1` do PC: use `--dart-define=SUPABASE_URL=http://10.0.2.2:54321` (veja as limitações de permissão de localização abaixo).
+- Alvo web (`flutter run -d chrome`) existe na pasta `web/`, mas não foi validado para a demo.
+
+## 4. Usuários de desenvolvimento (seed local)
+
+Definidos em `repositorios/kaptalixo-api/supabase/seed.sql` (**só POC local**):
 
 - Senha de todos: `Kaptalixo#Dev1`
-- E-mails: `admin@`, `ponto1..4@`, `gerador1..5@`, `catador1..9@` + `kaptalixo.dev` (`catador9` está pendente).
+- E-mails (`@kaptalixo.dev`): `admin@`, `ponto1@..ponto4@`, `gerador1@..gerador5@`, `catador1@..catador9@`.
+- `catador9` está **pendente** de aprovação (cai na tela "aguardando"); `catador1..8` estão aprovados. O admin aprova/suspende pela lista de catadores.
+
+## 5. Roteiro de demonstração (≈ 5 min)
+
+Base: `docs/01` §9. Abaixo, o que o código realmente suporta hoje e como executar. O que depende de algo ausente está marcado.
+
+Preparação: banco recém-resetado (`db reset`), e o app aberto em 3 janelas (gerador, catador, admin). Atenção: instâncias do app na mesma máquina e no mesmo navegador/perfil compartilham a sessão salva; para três papéis simultâneos use instâncias com perfis de armazenamento distintos (por exemplo, builds/alvos diferentes: Windows + Android/emulador + Chrome em janela anônima). Esse arranjo de 3 telas não foi validado de ponta a ponta.
+
+1. **Admin** (`admin@`): tela inicial lista catadores; o ícone "Painel de demonstração" abre `/admin/demo` (mapa, ações, eventos ao vivo, simulação 1x/10x).
+2. **Catador** (`catador1@`): na home, ficar **disponível** (exige localização; ver limitações). Repita com outro catador, se quiser ver a oferta passar de um para outro.
+3. **Gerador** (`gerador1@`): a home mostra o mapa; "Chamar coleta" (`/gerador/chamar`) permite escolher/confirmar o endereço (busca Nominatim ou manual), quantidade e tamanho dos sacos e materiais, e cria a solicitação; segue para `/gerador/acompanhar/:id` ("buscando catador").
+4. **Catador**: recebe a oferta (home) e aceita ou recusa; ao recusar/expirar, o servidor oferece ao próximo. Aceitar leva a `/catador/rota/:id`, com o mapa da rota até o gerador e depois até o ponto de descarte (pode trocar de ponto).
+5. **Gerador**: vê o catador a caminho, ETA calculado no cliente e o **PIN** de coleta (só ele o vê). Segunda solicitação encaixada na rota ativa é feita pelo servidor (matching), depende do catador ainda estar elegível.
+6. **Catador**: avança as paradas; ao chegar no gerador digita o PIN que o gerador informa; coleta confirmada. Posição enviada a cada 5 s durante a rota.
+7. **Ponto** (`ponto1@`): painel com entregas a caminho; na chegada registra a pesagem por material (`TelaPesagem`) e vê o valor.
+8. **Avaliação mútua**: o servidor tem a RPC `avaliar`, mas **não há tela** (ver limitações); esta etapa não pode ser demonstrada pela UI.
+
+Simulação de movimento (passo 6 do roteiro original, painel admin): a tela existe, mas depende de RPCs que ainda não estão no banco (limitações). Enquanto isso, o catador anda "de verdade" por GPS do dispositivo.
+
+## 6. Limitações conhecidas (honestas)
+
+Referências em `backlog/PEDIDOS.md`.
+
+- **RPCs `demo_*` ausentes no banco** (P-024/P-025): só `resetar_demo` existe. No painel `/admin/demo`, "Criar catadores fictícios", "Criar pedido fictício", o snapshot do mapa/eventos e a simulação de movimento dependem de `demo_snapshot`, `demo_criar_catadores`, `demo_criar_pedido`, `demo_mover_catador` e vão falhar/ficar vazios até o `dev-db` entregá-las. O contrato JSON de `demo_snapshot` também está divergente entre o parser e o pedido (P-025). Reset < 10 s não foi medido.
+- **Avaliação sem tela** (T3.4/T5.4): a RPC `avaliar` existe, o app não tem UI; `aoAvaliar` não está ligado.
+- **Permissões de localização**: `AndroidManifest.xml` não declara `ACCESS_FINE/COARSE_LOCATION`, e não há pasta `ios/` (P-015). No Android o GPS não funciona até declará-las; no Windows, a localização do sistema precisa estar ativada. O modo simulação do catador só existe no painel admin; não há seletor de posição manual para o catador.
+- **Backend dos pedidos P-016..P-023 (dev-db)** em aberto: RPC `pontos_proximos` e visão `v_entrega_a_caminho` não existem nas migrations (lista de pontos próximos vem vazia; painel do ponto sem entregas a caminho), e publicações Realtime/GRANTs pedidos não foram confirmados. Visões existentes: `v_catador_privado`, `v_oferta_resumo`, `v_rota_catador`, `v_solicitacao_catador`, `v_solicitacao_gerador`. Isso pode quebrar etapas do roteiro; valide cada uma.
+- **ETA/polyline do gerador** são calculados no cliente (OSRM público ou haversine), não oficiais do servidor.
+- **Wiring parcial**: pesagem do ponto abre por `Navigator.push` padrão; foto da solicitação e agendamento não têm UI.
+- **Serviços públicos** (OSRM, Nominatim, tiles) podem limitar ou falhar; Nominatim: 1 req/s.
+- **Build/execução**: validado apenas o alvo Windows desktop no desenvolvimento; testes de integração (`integration_test/`) ainda sem cenários E2E (só `helpers/`). Android, web e iOS não foram validados.
+- Auth é e-mail/senha local, sem confirmação; sem pagamento real nem push nativo (fora da POC).
+
+## 7. Qualidade e testes
+
+A partir da pasta `Kaptalixo`:
+
+```
+scripts\verificar.ps1
+```
+
+Roda `flutter pub get`, `dart format --set-exit-if-changed`, `flutter analyze` e `flutter test` neste repositório; e, na API, `supabase db reset`, `supabase test db` (pgTAP) e testes Deno (se houver Deno). Precisa de Docker ativo. Só o front: `cd repositorios\kaptalixo-web; flutter analyze; flutter test`.
+
+Fluxo de git e PRs: `docs/08-repositorios-e-fluxo-git.md`. Nunca commite segredos.
