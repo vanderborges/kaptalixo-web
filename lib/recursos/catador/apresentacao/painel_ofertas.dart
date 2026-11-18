@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,7 +12,7 @@ class PainelOfertas extends ConsumerWidget {
   const PainelOfertas({super.key, this.aoAceitar});
 
   /// Chamado com o id da rota criada no aceite (a tela da rota é da T5.3).
-  final void Function(String rotaId)? aoAceitar;
+  final FutureOr<void> Function(String rotaId)? aoAceitar;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -90,7 +92,7 @@ class _CartaoOferta extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Nova coleta',
+              oferta.naRota ? 'Coleta extra' : 'Nova coleta',
               style: tema.textTheme.titleLarge,
               textAlign: TextAlign.center,
             ),
@@ -112,10 +114,19 @@ class _CartaoOferta extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
             if (oferta.naRota)
-              Text(
-                'No seu caminho',
-                style: tema.textTheme.titleMedium,
-                textAlign: TextAlign.center,
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Center(
+                  child: Chip(
+                    key: const Key('tag-na-rota'),
+                    avatar: const Icon(Icons.route),
+                    label: Text(
+                      'Na sua rota',
+                      style: tema.textTheme.titleMedium,
+                    ),
+                    backgroundColor: tema.colorScheme.tertiaryContainer,
+                  ),
+                ),
               ),
             const SizedBox(height: 12),
             Semantics(

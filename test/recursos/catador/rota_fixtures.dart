@@ -9,6 +9,7 @@ import 'package:kaptalixo/nucleo/localizacao/servico_localizacao.dart';
 import 'package:kaptalixo/nucleo/mapas/servico_rotas_fake.dart';
 import 'package:kaptalixo/recursos/catador/apresentacao/ofertas_providers.dart';
 import 'package:kaptalixo/recursos/catador/apresentacao/rota_providers.dart';
+import 'package:kaptalixo/recursos/catador/dominio/ofertas_repositorio.dart';
 import 'package:kaptalixo/recursos/catador/apresentacao/tela_rota_ativa.dart';
 import 'package:kaptalixo/recursos/catador/dados/rota_repositorio_fake.dart';
 import 'package:kaptalixo/recursos/catador/dominio/rota_ativa.dart';
@@ -94,6 +95,8 @@ Future<RelogioTeste> montarRota(
   required ServicoLocalizacao gps,
   RelogioTeste? relogio,
   VoidCallback? aoSair,
+  OfertasRepositorio? ofertas,
+  Future<void> Function(String rotaId)? aoReplanejar,
 }) async {
   final r = relogio ?? RelogioTeste();
   t.view.physicalSize = const Size(900, 2200);
@@ -106,11 +109,14 @@ Future<RelogioTeste> montarRota(
         servicoLocalizacaoProvider.overrideWithValue(gps),
         servicoRotasCatadorProvider.overrideWithValue(ServicoRotasFake()),
         relogioProvider.overrideWithValue(r.agora),
+        if (ofertas != null)
+          ofertasRepositorioProvider.overrideWithValue(ofertas),
       ],
       child: MaterialApp(
         home: TelaRotaAtiva(
           rotaId: 'rota-1',
           aoSair: aoSair,
+          aoReplanejar: aoReplanejar,
           tileProvider: TilesVazios(),
         ),
       ),
