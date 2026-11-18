@@ -110,6 +110,14 @@ final acompanhamentoProvider = StreamProvider.autoDispose
       (ref, id) => ref.watch(acompanhamentoRepositorioProvider).observar(id),
     );
 
+/// Solicitações ativas e coletadas do gerador (Realtime via repositório), para
+/// a home decidir entre acompanhar, avaliar e chamar nova coleta (T6.4).
+final solicitacoesAtuaisProvider =
+    StreamProvider.autoDispose<List<AcompanhamentoColeta>>(
+      retry: _semRetentativa,
+      (ref) => ref.watch(acompanhamentoRepositorioProvider).observarAtuais(),
+    );
+
 /// Serviço de rotas usado para ETA e linha no mapa. Testes usam o fake.
 final servicoRotasGeradorProvider = Provider<ServicoRotas>(
   (ref) => ServicoRotasOsrm(urlBase: Config.osrmBaseUrl),

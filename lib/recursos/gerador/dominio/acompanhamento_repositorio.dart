@@ -6,6 +6,12 @@ abstract interface class AcompanhamentoRepositorio {
   /// `FalhaAcompanhamento` no stream.
   Stream<AcompanhamentoColeta> observar(String solicitacaoId);
 
+  /// Solicitações do gerador que ainda importam na home: as ativas
+  /// (buscando/aceita/a_caminho/no_local) e as `coletada` (a avaliar, enquanto
+  /// o catador leva ao ponto). Pode haver uma coletada e uma ativa ao mesmo
+  /// tempo (T1.8). Emite ao assinar e a cada mudança.
+  Stream<List<AcompanhamentoColeta>> observarAtuais();
+
   /// Cancela a coleta (UC12/RN09). Lança `FalhaAcompanhamento`.
   Future<void> cancelar(String solicitacaoId, {String? motivo});
 }

@@ -23,6 +23,9 @@ enum StatusColeta {
   /// Há um catador atendendo (mapa, PIN e dados do catador visíveis).
   bool get comCatador => this == aceita || this == aCaminho || this == noLocal;
 
+  /// Ativa (T1.8): bloqueia novo pedido. `coletada` não conta.
+  bool get ativa => this == buscando || comCatador;
+
   /// Coleta feita (leva à avaliação, UC13).
   bool get concluida => this == coletada || this == entregue;
 

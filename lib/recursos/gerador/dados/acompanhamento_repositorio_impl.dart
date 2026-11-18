@@ -68,6 +68,53 @@ class AcompanhamentoRepositorioImpl implements AcompanhamentoRepositorio {
   }
 
   @override
+  Stream<List<AcompanhamentoColeta>> observarAtuais() {
+    late final StreamController<List<AcompanhamentoColeta>> ctrl;
+    StreamSubscription<void>? sub;
+    var carregando = false;
+    var pendente = false;
+
+    Future<List<AcompanhamentoColeta>> carregar() async {
+      try {
+        final linhas = await _remoto.buscarAtuais();
+        return [for (final l in linhas) AcompanhamentoColeta.deLinha(l)];
+      } on FalhaAcompanhamento {
+        rethrow;
+      } catch (e) {
+        throw FalhaAcompanhamento.doCodigo(e.toString());
+      }
+    }
+
+    Future<void> atualizar() async {
+      if (carregando) {
+        pendente = true;
+        return;
+      }
+      carregando = true;
+      try {
+        do {
+          pendente = false;
+          final r = await carregar();
+          if (!ctrl.isClosed) ctrl.add(r);
+        } while (pendente && !ctrl.isClosed);
+      } catch (e, st) {
+        if (!ctrl.isClosed) ctrl.addError(e, st);
+      } finally {
+        carregando = false;
+      }
+    }
+
+    ctrl = StreamController<List<AcompanhamentoColeta>>(
+      onListen: () {
+        sub = _remoto.mudancasAtuais().listen((_) => atualizar());
+        atualizar();
+      },
+      onCancel: () => sub?.cancel(),
+    );
+    return ctrl.stream;
+  }
+
+  @override
   Future<void> cancelar(String solicitacaoId, {String? motivo}) async {
     final m = motivo?.trim();
     try {

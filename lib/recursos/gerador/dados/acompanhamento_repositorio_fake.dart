@@ -31,6 +31,24 @@ class AcompanhamentoRepositorioFake implements AcompanhamentoRepositorio {
     yield* _ctrl.stream;
   }
 
+  /// Lista inicial de [observarAtuais] (vazia por padrão).
+  List<AcompanhamentoColeta> atuaisIniciais = const [];
+  final _ctrlAtuais = StreamController<List<AcompanhamentoColeta>>.broadcast();
+  List<AcompanhamentoColeta>? _ultimosAtuais;
+
+  void emitirAtuais(List<AcompanhamentoColeta> lista) {
+    _ultimosAtuais = lista;
+    _ctrlAtuais.add(lista);
+  }
+
+  void emitirErroAtuais(Object erro) => _ctrlAtuais.addError(erro);
+
+  @override
+  Stream<List<AcompanhamentoColeta>> observarAtuais() async* {
+    yield _ultimosAtuais ?? atuaisIniciais;
+    yield* _ctrlAtuais.stream;
+  }
+
   @override
   Future<void> cancelar(String solicitacaoId, {String? motivo}) async {
     cancelamentos.add((id: solicitacaoId, motivo: motivo));

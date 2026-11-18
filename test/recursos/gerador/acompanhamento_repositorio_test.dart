@@ -31,6 +31,19 @@ class _Remoto implements AcompanhamentoRemoto {
   @override
   Stream<void> mudancas(String id) => eventos.stream;
 
+  List<Map<String, dynamic>> atuais = [];
+  final eventosAtuais = StreamController<void>.broadcast();
+
+  @override
+  Future<List<Map<String, dynamic>>> buscarAtuais() async {
+    buscas++;
+    if (erroBusca != null) throw erroBusca!;
+    return atuais;
+  }
+
+  @override
+  Stream<void> mudancasAtuais() => eventosAtuais.stream;
+
   @override
   Future<void> cancelar(String id, String? motivo) async {
     cancelados.add((id, motivo));
@@ -112,6 +125,39 @@ void main() {
       StatusColeta.coletada,
     ]);
     expect(r.eventos.hasListener, isFalse);
+  });
+
+  test('observarAtuais emite coletada + ativa e reage a eventos', () async {
+    final r = _Remoto()
+      ..atuais = [
+        _linha('coletada', extra: {'id': 'velha'}),
+        _linha('buscando', extra: {'id': 'nova', 'catador_nome': null}),
+      ];
+    final repo = AcompanhamentoRepositorioImpl(r);
+    final recebidos = <List<String>>[];
+    final sub = repo.observarAtuais().listen(
+      (l) => recebidos.add([for (final c in l) '${c.id}:${c.status.codigo}']),
+    );
+    await pumpEventQueue();
+    r.atuais = [
+      _linha('aceita', extra: {'id': 'nova'}),
+    ];
+    r.eventosAtuais.add(null);
+    await pumpEventQueue();
+    await sub.cancel();
+    expect(recebidos, [
+      ['velha:coletada', 'nova:buscando'],
+      ['nova:aceita'],
+    ]);
+    expect(r.eventosAtuais.hasListener, isFalse);
+  });
+
+  test('observarAtuais traduz erro em FalhaAcompanhamento', () async {
+    final r = _Remoto()..erroBusca = StateError('socket');
+    await expectLater(
+      AcompanhamentoRepositorioImpl(r).observarAtuais(),
+      emitsError(isA<FalhaAcompanhamento>()),
+    );
   });
 
   test('solicitacao inexistente vira FalhaAcompanhamento no stream', () async {

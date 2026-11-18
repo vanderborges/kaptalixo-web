@@ -69,6 +69,49 @@ class AcompanhamentoRemotoSupabase implements AcompanhamentoRemoto {
   }
 
   @override
+  Future<List<Map<String, dynamic>>> buscarAtuais() async {
+    final linhas = await _cliente
+        .from('v_solicitacao_gerador')
+        .select()
+        .inFilter('status', [
+          'buscando',
+          'aceita',
+          'a_caminho',
+          'no_local',
+          'coletada',
+        ])
+        .order('atualizado_em', ascending: false)
+        .limit(10);
+    return List<Map<String, dynamic>>.from(linhas);
+  }
+
+  @override
+  Stream<void> mudancasAtuais() {
+    late final StreamController<void> ctrl;
+    RealtimeChannel? canal;
+    ctrl = StreamController<void>(
+      onListen: () {
+        canal = _cliente
+            .channel('solicitacoes-atuais')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'solicitacoes',
+              callback: (_) {
+                if (!ctrl.isClosed) ctrl.add(null);
+              },
+            )
+            .subscribe();
+      },
+      onCancel: () async {
+        final c = canal;
+        if (c != null) await _cliente.removeChannel(c);
+      },
+    );
+    return ctrl.stream;
+  }
+
+  @override
   Future<void> cancelar(String id, String? motivo) async {
     await _cliente.rpc<dynamic>(
       'cancelar_solicitacao',
