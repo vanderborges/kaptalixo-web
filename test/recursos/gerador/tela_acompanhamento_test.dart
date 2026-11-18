@@ -92,6 +92,8 @@ class _RepoCom implements AcompanhamentoRepositorio {
   @override
   Stream<AcompanhamentoColeta> observar(String id) => stream;
   @override
+  Stream<List<AcompanhamentoColeta>> observarAtuais() => const Stream.empty();
+  @override
   Future<void> cancelar(String id, {String? motivo}) async {}
 }
 

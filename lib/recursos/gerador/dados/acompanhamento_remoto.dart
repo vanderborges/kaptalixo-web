@@ -9,6 +9,13 @@ abstract class AcompanhamentoRemoto {
   /// Emite a cada mudança Realtime relevante (solicitação ou posição).
   Stream<void> mudancas(String id);
 
+  /// Linhas de `v_solicitacao_gerador` ativas ou `coletada` (mais recentes
+  /// primeiro).
+  Future<List<Map<String, dynamic>>> buscarAtuais();
+
+  /// Emite a cada mudança em qualquer solicitação do gerador (RLS filtra).
+  Stream<void> mudancasAtuais();
+
   /// RPC `cancelar_solicitacao`.
   Future<void> cancelar(String id, String? motivo);
 }

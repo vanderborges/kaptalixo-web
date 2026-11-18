@@ -14,7 +14,9 @@ import 'package:kaptalixo/nucleo/mapas/servico_geocodificacao.dart';
 import 'package:kaptalixo/nucleo/mapas/servico_geocodificacao_fake.dart';
 import 'package:kaptalixo/recursos/gerador/apresentacao/providers.dart';
 import 'package:kaptalixo/recursos/gerador/apresentacao/tela_home_gerador.dart';
+import 'package:kaptalixo/recursos/gerador/dados/acompanhamento_repositorio_fake.dart';
 import 'package:kaptalixo/recursos/gerador/dados/pontos_proximos_repositorio_fake.dart';
+import 'package:kaptalixo/recursos/gerador/dominio/acompanhamento_coleta.dart';
 import 'package:kaptalixo/recursos/gerador/dominio/falha_gerador.dart';
 import 'package:kaptalixo/recursos/gerador/dominio/ponto_proximo.dart';
 import 'package:latlong2/latlong.dart';
@@ -44,6 +46,27 @@ const _ponto = PontoProximo(
   posicao: LatLng(-23.551, -46.632),
 );
 
+AcompanhamentoColeta _sol(String id, StatusColeta status) =>
+    AcompanhamentoColeta(
+      id: id,
+      status: status,
+      enderecoTexto: 'Rua A, 1',
+      local: _centro,
+      qtdSacos: 2,
+      catador: status.comCatador || status.concluida
+          ? const CatadorAtendimento(nome: 'João Silva')
+          : null,
+    );
+
+bool _botaoHabilitado(WidgetTester tester) => tester
+    .widget<FilledButton>(
+      find.ancestor(
+        of: find.text('Chamar coleta'),
+        matching: find.byWidgetPredicate((w) => w is FilledButton),
+      ),
+    )
+    .enabled;
+
 Posicao _posicao() => Posicao(ponto: _centro, instante: DateTime(2026));
 
 Future<void> abrir(
@@ -51,6 +74,8 @@ Future<void> abrir(
   ServicoLocalizacao? localizacao,
   PontosProximosRepositorioFake? pontos,
   ServicoGeocodificacao? geo,
+  AcompanhamentoRepositorioFake? acompanhamento,
+  void Function(String)? aoAvaliar,
 }) async {
   tester.view.physicalSize = const Size(900, 1800);
   tester.view.devicePixelRatio = 1;
@@ -59,7 +84,13 @@ Future<void> abrir(
     routes: [
       GoRoute(
         path: '/',
-        builder: (_, _) => TelaHomeGerador(tileProvider: _TilesVazios()),
+        builder: (_, _) =>
+            TelaHomeGerador(tileProvider: _TilesVazios(), aoAvaliar: aoAvaliar),
+      ),
+      GoRoute(
+        path: '$rotaAcompanharColeta/:id',
+        builder: (_, state) =>
+            Scaffold(body: Text('acompanhar ${state.pathParameters['id']}')),
       ),
       GoRoute(
         path: rotaChamarColeta,
@@ -79,6 +110,9 @@ Future<void> abrir(
         ),
         geocodificacaoProvider.overrideWithValue(
           geo ?? ServicoGeocodificacaoFake(),
+        ),
+        acompanhamentoRepositorioProvider.overrideWithValue(
+          acompanhamento ?? AcompanhamentoRepositorioFake(),
         ),
       ],
       child: MaterialApp.router(routerConfig: roteador),
@@ -210,6 +244,86 @@ void main() {
     await tester.tap(find.text('Tentar usar minha localização'));
     await tester.pumpAndSettle();
     expect(find.text('Sua localização atual'), findsOneWidget);
+  });
+
+  testWidgets('coletada libera Chamar coleta e mostra cartao com avaliar', (
+    tester,
+  ) async {
+    final repo = AcompanhamentoRepositorioFake()
+      ..atuaisIniciais = [_sol('s1', StatusColeta.coletada)];
+    String? avaliada;
+    await abrir(tester, acompanhamento: repo, aoAvaliar: (id) => avaliada = id);
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Coleta feita, o catador está levando ao ponto'),
+      findsOneWidget,
+    );
+    expect(_botaoHabilitado(tester), isTrue);
+    await tester.tap(find.text('Avaliar o catador'));
+    expect(avaliada, 's1');
+    await tester.tap(find.text('Chamar coleta'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('chamar LatLng'), findsOneWidget);
+  });
+
+  testWidgets('ativa (no_local) bloqueia o botao e leva ao acompanhamento', (
+    tester,
+  ) async {
+    final repo = AcompanhamentoRepositorioFake()
+      ..atuaisIniciais = [_sol('s2', StatusColeta.noLocal)];
+    await abrir(tester, acompanhamento: repo);
+    await tester.pumpAndSettle();
+    expect(_botaoHabilitado(tester), isFalse);
+    expect(find.text('Seu catador chegou!'), findsOneWidget);
+    await tester.tap(find.text('Acompanhar'));
+    await tester.pumpAndSettle();
+    expect(find.text('acompanhar s2'), findsOneWidget);
+  });
+
+  testWidgets('coletada + nova ativa: acompanha a ativa e avalia a coletada', (
+    tester,
+  ) async {
+    final repo = AcompanhamentoRepositorioFake()
+      ..atuaisIniciais = [
+        _sol('nova', StatusColeta.buscando),
+        _sol('velha', StatusColeta.coletada),
+      ];
+    await abrir(tester, acompanhamento: repo, aoAvaliar: (_) {});
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('coleta-feita-velha')), findsOneWidget);
+    expect(find.byKey(const Key('coleta-ativa-nova')), findsOneWidget);
+    expect(_botaoHabilitado(tester), isFalse);
+    await tester.tap(find.text('Acompanhar'));
+    await tester.pumpAndSettle();
+    expect(find.text('acompanhar nova'), findsOneWidget);
+  });
+
+  testWidgets('transicao em tempo real: no_local bloqueia, coletada libera', (
+    tester,
+  ) async {
+    final repo = AcompanhamentoRepositorioFake();
+    await abrir(tester, acompanhamento: repo);
+    await tester.pumpAndSettle();
+    expect(_botaoHabilitado(tester), isTrue);
+    repo.emitirAtuais([_sol('s1', StatusColeta.noLocal)]);
+    await tester.pumpAndSettle();
+    expect(_botaoHabilitado(tester), isFalse);
+    repo.emitirAtuais([_sol('s1', StatusColeta.coletada)]);
+    await tester.pumpAndSettle();
+    expect(_botaoHabilitado(tester), isTrue);
+    expect(find.text('Acompanhar'), findsNothing);
+    expect(find.text('Avaliar o catador'), findsNothing); // sem aoAvaliar
+  });
+
+  testWidgets('erro ao carregar solicitacoes nao bloqueia o botao', (
+    tester,
+  ) async {
+    final repo = AcompanhamentoRepositorioFake();
+    await abrir(tester, acompanhamento: repo);
+    await tester.pumpAndSettle();
+    repo.emitirErroAtuais(const FalhaGerador());
+    await tester.pumpAndSettle();
+    expect(_botaoHabilitado(tester), isTrue);
   });
 
   testWidgets('erro inesperado mostra erro com nova tentativa', (tester) async {
