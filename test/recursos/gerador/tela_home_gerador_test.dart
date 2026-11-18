@@ -76,6 +76,7 @@ Future<void> abrir(
   ServicoGeocodificacao? geo,
   AcompanhamentoRepositorioFake? acompanhamento,
   void Function(String)? aoAvaliar,
+  DateTime Function()? relogio,
 }) async {
   tester.view.physicalSize = const Size(900, 1800);
   tester.view.devicePixelRatio = 1;
@@ -114,6 +115,7 @@ Future<void> abrir(
         acompanhamentoRepositorioProvider.overrideWithValue(
           acompanhamento ?? AcompanhamentoRepositorioFake(),
         ),
+        if (relogio != null) relogioGeradorProvider.overrideWithValue(relogio),
       ],
       child: MaterialApp.router(routerConfig: roteador),
     ),
@@ -124,6 +126,38 @@ LocalizacaoFake _semGps(MotivoFalhaLocalizacao motivo) =>
     LocalizacaoFake(falha: FalhaLocalizacao(motivo));
 
 void main() {
+  testWidgets('cartao em andamento mostra chega em X min com contagem', (
+    tester,
+  ) async {
+    var agora = DateTime.utc(2030, 1, 1, 10);
+    AcompanhamentoColeta com(DateTime? eta) => AcompanhamentoColeta(
+      id: 's1',
+      status: StatusColeta.aCaminho,
+      enderecoTexto: 'Rua A, 1',
+      local: _centro,
+      qtdSacos: 2,
+      eta: eta,
+      distanciaTrechoM: 800,
+    );
+    final repo = AcompanhamentoRepositorioFake()
+      ..atuaisIniciais = [com(DateTime.utc(2030, 1, 1, 10, 5))];
+    await abrir(tester, acompanhamento: repo, relogio: () => agora);
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.text('Chega em cerca de 5 min (800 m)'), findsOneWidget);
+
+    agora = DateTime.utc(2030, 1, 1, 10, 3);
+    await tester.pump(const Duration(seconds: 5));
+    expect(find.text('Chega em cerca de 2 min (800 m)'), findsOneWidget);
+
+    repo.emitirAtuais([com(null)]);
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.textContaining('Chega em'), findsNothing);
+  });
+
   testWidgets('mostra carregando e depois mapa com atribuicao e botao', (
     tester,
   ) async {

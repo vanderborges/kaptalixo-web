@@ -31,6 +31,8 @@ AcompanhamentoColeta _c(
   LatLng? catadorEm,
   int tentativas = 0,
   String? pin = '4821',
+  DateTime? eta,
+  int? distanciaM,
 }) => AcompanhamentoColeta(
   id: 'sol-1',
   status: status,
@@ -38,6 +40,8 @@ AcompanhamentoColeta _c(
   local: _casa,
   qtdSacos: 2,
   pin: pin,
+  eta: eta,
+  distanciaTrechoM: distanciaM,
   tentativasOferta: tentativas,
   catador: status.comCatador || status.concluida
       ? CatadorAtendimento(
@@ -55,6 +59,7 @@ Future<void> abrir(
   void Function(String)? aoAvaliar,
   VoidCallback? aoSair,
   VoidCallback? aoNovaChamada,
+  DateTime Function()? relogio,
 }) async {
   tester.view.physicalSize = const Size(900, 1800);
   tester.view.devicePixelRatio = 1;
@@ -63,6 +68,7 @@ Future<void> abrir(
     ProviderScope(
       overrides: [
         acompanhamentoRepositorioProvider.overrideWithValue(repo),
+        if (relogio != null) relogioGeradorProvider.overrideWithValue(relogio),
         // 5 m/s: 1 km = 200 s.
         servicoRotasGeradorProvider.overrideWithValue(ServicoRotasFake()),
       ],
@@ -98,6 +104,59 @@ class _RepoCom implements AcompanhamentoRepositorio {
 }
 
 void main() {
+  testWidgets('chega em cerca de X min (Y km), contagem e replanejamento', (
+    tester,
+  ) async {
+    var agora = DateTime.utc(2030, 1, 1, 10, 0);
+    final repo = AcompanhamentoRepositorioFake(
+      inicial: _c(
+        StatusColeta.aceita,
+        eta: DateTime.utc(2030, 1, 1, 10, 6),
+        distanciaM: 1234,
+      ),
+    );
+    await abrir(tester, repo, relogio: () => agora);
+    await assentar(tester);
+    expect(find.text('Chega em cerca de 6 min (1,2 km)'), findsOneWidget);
+
+    // contagem regressiva local.
+    agora = DateTime.utc(2030, 1, 1, 10, 3, 30);
+    await tester.pump(const Duration(seconds: 5));
+    expect(find.text('Chega em cerca de 3 min (1,2 km)'), findsOneWidget);
+
+    // rota replanejada: novo ETA e distancia.
+    repo.emitir(
+      _c(
+        StatusColeta.aCaminho,
+        eta: DateTime.utc(2030, 1, 1, 10, 13, 30),
+        distanciaM: 450,
+      ),
+    );
+    await assentar(tester);
+    expect(find.text('Chega em cerca de 10 min (450 m)'), findsOneWidget);
+
+    // ETA vencido.
+    agora = DateTime.utc(2030, 1, 1, 10, 14);
+    await tester.pump(const Duration(seconds: 5));
+    expect(find.text('Chegando agora'), findsOneWidget);
+
+    // chegou: aviso some.
+    repo.emitir(
+      _c(StatusColeta.noLocal, eta: DateTime.utc(2030, 1, 1, 10, 14)),
+    );
+    await assentar(tester);
+    expect(find.byKey(const Key('chegada_estimada')), findsNothing);
+  });
+
+  testWidgets('sem ETA nao mostra nada', (tester) async {
+    final repo = AcompanhamentoRepositorioFake(
+      inicial: _c(StatusColeta.aceita),
+    );
+    await abrir(tester, repo);
+    await assentar(tester);
+    expect(find.textContaining('Chega em'), findsNothing);
+  });
+
   testWidgets('mostra carregando e depois a busca com a tentativa', (
     tester,
   ) async {
