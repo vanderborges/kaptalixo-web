@@ -154,7 +154,7 @@ void main() {
         _c(StatusColeta.aCaminho, catadorEm: const LatLng(-23.5600, -46.63)),
       );
       await assentar(tester);
-      expect(find.text('Seu catador está a 4 min'), findsOneWidget);
+      expect(find.text('Seu catador está a caminho'), findsOneWidget);
       expect(find.byType(PolylineLayer), findsOneWidget);
       expect(find.byTooltip('Seu catador'), findsOneWidget);
 
@@ -163,7 +163,7 @@ void main() {
         _c(StatusColeta.aCaminho, catadorEm: const LatLng(-23.5550, -46.63)),
       );
       await assentar(tester);
-      expect(find.text('Seu catador está a 2 min'), findsOneWidget);
+      expect(find.byKey(const Key('chegada_estimada')), findsNothing);
 
       repo.emitir(
         _c(StatusColeta.noLocal, catadorEm: const LatLng(-23.5500, -46.63)),

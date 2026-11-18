@@ -11,6 +11,7 @@ import 'cartao_pin.dart';
 import 'dialogo_cancelar.dart';
 import 'mapa_acompanhamento.dart';
 import 'providers.dart';
+import 'texto_chegada.dart';
 import 'texto_status.dart';
 import 'tela_buscando_catador.dart';
 
@@ -158,11 +159,8 @@ class _CorpoAtendimento extends ConsumerWidget {
                 ),
               )
               .value;
-    final eta = coleta.status == StatusColeta.noLocal
-        ? null
-        : rota?.duracaoSegundos;
     final tema = Theme.of(context);
-    final subtitulo = subtituloStatus(coleta, etaSegundos: eta);
+    final subtitulo = subtituloStatus(coleta);
     return Scaffold(
       appBar: AppBar(title: const Text('Sua coleta')),
       body: SafeArea(
@@ -183,13 +181,21 @@ class _CorpoAtendimento extends ConsumerWidget {
                 padding: const EdgeInsets.all(16),
                 children: [
                   Text(
-                    tituloStatus(coleta, etaSegundos: eta),
+                    tituloStatus(coleta),
                     key: const Key('titulo_status'),
                     style: tema.textTheme.headlineSmall,
                   ),
                   if (subtitulo != null) ...[
                     const SizedBox(height: 4),
                     Text(subtitulo, style: tema.textTheme.bodyLarge),
+                  ],
+                  if (coleta.chegadaVisivel) ...[
+                    const SizedBox(height: 8),
+                    TextoChegada(
+                      eta: coleta.eta,
+                      distanciaM: coleta.distanciaTrechoM,
+                      style: tema.textTheme.titleMedium,
+                    ),
                   ],
                   const SizedBox(height: 12),
                   if (catador != null) CartaoCatador(catador: catador),

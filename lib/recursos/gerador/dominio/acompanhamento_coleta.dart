@@ -80,6 +80,8 @@ class AcompanhamentoColeta {
     this.motivoCancelamento,
     this.catador,
     this.atualizadoEm,
+    this.eta,
+    this.distanciaTrechoM,
   });
 
   final String id;
@@ -94,6 +96,19 @@ class AcompanhamentoColeta {
   final String? motivoCancelamento;
   final CatadorAtendimento? catador;
   final DateTime? atualizadoEm;
+
+  /// Instante previsto de chegada do catador (rota do planejar-rota, T1.9).
+  /// Nulo sem rota planejada ou fora de aceita/a_caminho/no_local.
+  final DateTime? eta;
+
+  /// Distância do trecho até a coleta, em metros (T1.9).
+  final int? distanciaTrechoM;
+
+  /// Mostra "Chega em cerca de X min": só com catador indo à coleta e ETA
+  /// conhecido (ao chegar, o aviso some).
+  bool get chegadaVisivel =>
+      eta != null &&
+      (status == StatusColeta.aceita || status == StatusColeta.aCaminho);
 
   /// Lê uma linha de `v_solicitacao_gerador`. [posicao] é a linha de
   /// `posicoes_atendimento` (mais recente que a da visão), se houver.
@@ -133,6 +148,8 @@ class AcompanhamentoColeta {
       motivoCancelamento: m['motivo_cancelamento'] as String?,
       catador: catador,
       atualizadoEm: DateTime.tryParse('${m['atualizado_em']}'),
+      eta: m['eta'] == null ? null : DateTime.tryParse('${m['eta']}'),
+      distanciaTrechoM: (m['distancia_trecho_m'] as num?)?.round(),
     );
   }
 }

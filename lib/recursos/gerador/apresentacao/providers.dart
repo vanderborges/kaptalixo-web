@@ -118,6 +118,11 @@ final solicitacoesAtuaisProvider =
       (ref) => ref.watch(acompanhamentoRepositorioProvider).observarAtuais(),
     );
 
+/// Relógio do gerador (contagem regressiva do ETA). Testes injetam um falso.
+final relogioGeradorProvider = Provider<DateTime Function()>(
+  (ref) => DateTime.now,
+);
+
 /// Serviço de rotas usado para ETA e linha no mapa. Testes usam o fake.
 final servicoRotasGeradorProvider = Provider<ServicoRotas>(
   (ref) => ServicoRotasOsrm(urlBase: Config.osrmBaseUrl),

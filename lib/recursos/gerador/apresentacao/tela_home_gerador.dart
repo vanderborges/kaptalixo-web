@@ -13,6 +13,7 @@ import '../dominio/ponto_proximo.dart';
 import 'mapa_gerador.dart';
 import 'painel_endereco_manual.dart';
 import 'providers.dart';
+import 'texto_chegada.dart';
 import 'texto_status.dart';
 
 /// Rota do fluxo "Chamar coleta" (T3.2). A posição segue em `extra` (LatLng).
@@ -239,7 +240,17 @@ class _CartaoEmAndamento extends StatelessWidget {
       child: ListTile(
         leading: const Icon(Icons.local_shipping_outlined),
         title: Text(tituloStatus(coleta)),
-        subtitle: const Text('Você já tem uma coleta em andamento.'),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Você já tem uma coleta em andamento.'),
+            if (coleta.chegadaVisivel)
+              TextoChegada(
+                eta: coleta.eta,
+                distanciaM: coleta.distanciaTrechoM,
+              ),
+          ],
+        ),
         trailing: TextButton(
           onPressed: aoAcompanhar,
           child: const Text('Acompanhar'),
