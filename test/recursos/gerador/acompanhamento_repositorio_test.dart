@@ -70,6 +70,20 @@ Map<String, dynamic> _linha(String status, {Map<String, dynamic>? extra}) => {
 };
 
 void main() {
+  test('le eta e distancia_trecho_m da visao', () {
+    final c = AcompanhamentoColeta.deLinha({
+      ..._linha('aceita'),
+      'eta': '2030-01-01T10:06:00+00:00',
+      'distancia_trecho_m': 1234,
+    });
+    expect(c.eta, DateTime.utc(2030, 1, 1, 10, 6));
+    expect(c.distanciaTrechoM, 1234);
+    expect(c.chegadaVisivel, isTrue);
+    final sem = AcompanhamentoColeta.deLinha(_linha('aceita'));
+    expect(sem.eta, isNull);
+    expect(sem.chegadaVisivel, isFalse);
+  });
+
   test('interpreta a visao do gerador (catador, nota, veiculo, PIN)', () {
     final c = AcompanhamentoColeta.deLinha(_linha('a_caminho'));
     expect(c.status, StatusColeta.aCaminho);
