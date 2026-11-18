@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../compartilhado/estados.dart';
 import '../dominio/rota_ativa.dart';
 import 'mapa_rota.dart';
+import 'painel_ofertas.dart';
 import 'painel_pin.dart';
 import 'rota_providers.dart';
 
@@ -33,9 +34,14 @@ class TelaRotaAtiva extends ConsumerWidget {
     this.aoSair,
     this.acoes = const [],
     this.tileProvider,
+    this.aoReplanejar,
   });
 
   final String rotaId;
+
+  /// Pede o replanejamento (`planejar-rota`) da rota após aceitar uma oferta
+  /// extra (UC10). Melhor esforço: falhas não impedem atualizar a tela.
+  final Future<void> Function(String rotaId)? aoReplanejar;
 
   /// Volta ao início (rota concluída/cancelada ou não encontrada).
   final VoidCallback? aoSair;
@@ -86,6 +92,7 @@ class TelaRotaAtiva extends ConsumerWidget {
                 rota: rota,
                 estado: estado,
                 aoSair: aoSair,
+                aoReplanejar: aoReplanejar,
               ),
             ),
           ),
@@ -106,8 +113,10 @@ class _Painel extends ConsumerWidget {
     required this.rota,
     required this.estado,
     required this.aoSair,
+    this.aoReplanejar,
   });
 
+  final Future<void> Function(String rotaId)? aoReplanejar;
   final String rotaId;
   final RotaAtiva rota;
   final EstadoRota estado;
@@ -135,6 +144,22 @@ class _Painel extends ConsumerWidget {
           ),
         ),
     ];
+
+    // UC10: ofertas extras chegam no mesmo painel enquanto a rota anda.
+    if (rota.status == StatusRota.emAndamento) {
+      filhos.add(
+        PainelOfertas(
+          aoAceitar: (rotaOferta) async {
+            try {
+              await aoReplanejar?.call(rotaOferta);
+            } catch (_) {
+              // melhor esforço: a rota continua válida sem o novo ETA
+            }
+            await notifier.atualizar();
+          },
+        ),
+      );
+    }
 
     switch (rota.status) {
       case StatusRota.concluida:
@@ -321,8 +346,8 @@ class _Painel extends ConsumerWidget {
         _resumo(context, 'No ponto', [p.pontoNome ?? 'Ponto de descarte']),
         const SizedBox(height: 8),
         Text(
-          'Aguarde a pesagem do ponto.',
-          key: const Key('aguardando-pesagem'),
+          'Aguarde a confirmação da entrega pelo ponto.',
+          key: const Key('aguardando-entrega'),
           style: Theme.of(context).textTheme.titleLarge,
           textAlign: TextAlign.center,
         ),

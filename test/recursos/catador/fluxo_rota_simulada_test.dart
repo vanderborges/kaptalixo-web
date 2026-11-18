@@ -64,7 +64,7 @@ void main() {
     expect(find.text('Levar ao ponto'), findsOneWidget);
 
     // 5. Ponto de descarte: chegada automática e espera da pesagem.
-    await ateAparecer(find.byKey(const Key('aguardando-pesagem')));
+    await ateAparecer(find.byKey(const Key('aguardando-entrega')));
     expect(repo.rota!.descarte!.status, StatusParada.noLocal);
 
     // 6. O ponto registra a entrega (T5.4): rota concluída.

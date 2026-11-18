@@ -374,6 +374,9 @@ class RotaNotifier extends Notifier<EstadoRota> {
     }
   }
 
+  /// Relê a rota agora (ex.: após aceitar uma oferta extra e replanejar).
+  Future<void> atualizar() => _recarregar();
+
   /// **Iniciar rota** (rota `planejada` -> `em_andamento`).
   Future<bool> iniciar() async {
     final r = state.rota;

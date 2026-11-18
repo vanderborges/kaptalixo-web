@@ -289,7 +289,7 @@ void main() {
     await t.pump();
     await t.pump();
     expect(find.text('Cheguei ao ponto'), findsNothing);
-    expect(find.byKey(const Key('aguardando-pesagem')), findsOneWidget);
+    expect(find.byKey(const Key('aguardando-entrega')), findsOneWidget);
     expect(find.byKey(const Key('trocar-ponto')), findsNothing);
     expect(repo.rota!.descarte!.status, StatusParada.noLocal);
   });

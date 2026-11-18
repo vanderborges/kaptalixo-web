@@ -166,6 +166,7 @@ GoRouter criarRoteador(
                     acoes: const [BotaoSair()],
                     tileProvider: ref.watch(tileProviderAppProvider),
                     aoSair: () => context.go('/catador'),
+                    aoReplanejar: (id) => ref.read(planejarRotaProvider)(id),
                   ),
                 ),
               ),
